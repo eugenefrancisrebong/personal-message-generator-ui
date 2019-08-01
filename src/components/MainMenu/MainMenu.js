@@ -28,9 +28,10 @@ class MainMenu extends React.Component {
 
     handleGotoUsers=()=>{
         this.props.history.push('/users')
-        localStorage.setItem('path','/users');
     }
-
+    handleGotoGenerate=()=>{
+        this.props.history.push('/generate')
+    }
   render = () => {
     return (
         <Container>
@@ -38,7 +39,7 @@ class MainMenu extends React.Component {
             <Grid item xs={4}>
               <Box className="center-form-content" >
                 <Card className="form-card">
-                    <Button fullWidth size="large" variant="outlined"><AddIcon /> Generate</Button>
+                    <Button fullWidth size="large" variant="outlined" onClick={this.handleGotoGenerate}><AddIcon /> Generate</Button>
                     <Button fullWidth size="large" variant="outlined"><DescriptionIcon /> Templates</Button>
                     <Button fullWidth size="large" variant="outlined"><MessageIcon /> Messages</Button>
                     {this.props.userData.PermissionLevel>=1 && <Button fullWidth size="large" variant="outlined" onClick={this.handleGotoUsers}><SAIcon /> Users</Button>}
