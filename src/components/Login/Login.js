@@ -38,8 +38,12 @@ class Login extends React.Component {
     axios.post(`${process.env.REACT_APP_API_URL}login`,{username:this.state.username,password:this.state.password})
     .then((response)=>{
       if(response.data) {
-        this.props.SetLoginData(response.data);
-        this.props.history.push('/home')
+        if(!response.data.code) {
+          this.props.SetLoginData(response.data);
+          this.props.history.push('/home')
+        } else {
+          this.setState({open:true})
+        }
       } else {
         this.setState({open:true})
       }
