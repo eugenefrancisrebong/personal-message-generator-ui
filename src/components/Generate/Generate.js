@@ -7,6 +7,22 @@ import { withRouter } from "react-router-dom";
 import fs from 'fs';
 import {Editor, EditorState,convertFromRaw,convertToRaw} from 'draft-js';
 import {stateToHTML} from 'draft-js-export-html';
+import ReactQuill, { Quill } from 'react-quill'; // ES6
+import 'react-quill/dist/quill.snow.css';
+import 'quill-emoji/dist/quill-emoji.css';
+import { /*EmojiBlot, ShortNameEmoji, ToolbarEmoji, TextAreaEmoji , */emojiList} from 'quill-emoji'
+
+var Block = Quill.import('blots/block');
+var EmojiBlot = Quill.import('formats/emoji')
+var ShortNameEmoji = Quill.import('modules/emoji-shortname')
+var ToolbarEmoji = Quill.import('modules/emoji-toolbar')
+var TextAreaEmoji = Quill.import('modules/emoji-textarea')
+Block.tagName = 'DIV';
+Quill.register(Block, true);
+Quill.register(EmojiBlot, true);
+Quill.register(ShortNameEmoji, true);
+Quill.register(ToolbarEmoji, true);
+Quill.register(TextAreaEmoji, true);
 
 
 class Generate extends React.Component {
@@ -14,10 +30,51 @@ class Generate extends React.Component {
       title:'',
       columns: /*localStorage.getItem('columns').split(','),*/[],
       definitions:/*JSON.parse(localStorage.getItem('definitions')),*/{},
-      editorState:EditorState.createEmpty(),
+      editorState:EditorState.createEmpty(), 
       preview:'',
       currentDefinition:/*Number(localStorage.getItem('currentDefinition'))//*/0,
+      editorText:'',
+      encoding:'normal'
   };
+
+  modules = {
+    toolbar:{
+        container: [
+        [{ 'header': [1, 2, false] }],
+        ['bold', 'italic', 'strike'],
+        ['emoji'],
+        [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
+        ['clean']
+        ],
+        handlers: {'emoji': function() {}}
+    },
+    
+    "emoji-shortname": {
+        emojiList: emojiList,
+        fuse: {
+          shouldSort: true,
+          threshold: 0.1,
+          location: 0,
+          distance: 100,
+          maxPatternLength: 32,
+          minMatchCharLength: 1,
+          keys: [
+            "shortname"
+          ]
+        },
+    },
+    "emoji-toolbar": true,
+    // "emoji-textarea": true,
+    // "emoji-shortname": true,
+  }
+
+  formats = [
+    'header',
+    'bold', 'italic', 'strike', 'blockquote','emoji',
+    'list', 'bullet', 'indent',
+    'link', 'image'
+  ]
+
 
   componentWillMount() {
       if(!this.props.isLoggedIn) {
@@ -41,13 +98,13 @@ class Generate extends React.Component {
     }
   }
 
-  handleUpdateEditor=(editorState)=>{
-    let data = stateToHTML(editorState.getCurrentContent(),{defaultBlockTag: 'div'});
-    this.setState({editorState,preview: data})
+  handleUpdateEditor=(value)=>{
+      this.setState({preview:value})
     
   }
 
   convertShortCodes=()=>{
+      console.log('convert');
     if(this.state.currentDefinition!==0) {
         const currentRecord = this.state.definitions[this.state.currentDefinition-1];
         let data = this.state.preview;
@@ -55,6 +112,20 @@ class Generate extends React.Component {
             var re = new RegExp("\\["+column+"\\]", 'g');
             data = data.replace(re,currentRecord[column]);
         })
+        if(this.state.encoding==='whatsapp') {
+            const bold_start = new RegExp("<strong>",'g')
+            const bold_end = new RegExp("</strong>",'g')
+            const italicized_start = new RegExp("<em>",'g')
+            const italicized_end = new RegExp("</em>",'g')
+            const strikethrough_start = new RegExp("<s>",'g')
+            const strikethrough_end = new RegExp("</s>",'g')
+            data=data.replace(bold_start,'<strong>*')
+                .replace(bold_end,'*</strong>')
+                .replace(italicized_start,'<em>_')
+                .replace(italicized_end,'_</em>')
+                .replace(strikethrough_start,'<s>~')
+                .replace(strikethrough_end,'~</s>')
+        }
         return data;
     } else {
         return '';
@@ -113,6 +184,14 @@ class Generate extends React.Component {
           }
     }
 
+    setEncodingNormal= () => {
+        this.setState({encoding:'normal'})
+    }
+
+    setEncodingWhatsApp=()=>{
+        this.setState({encoding:'whatsapp'})
+    }
+
 
   render = () => {
     return (<Container>
@@ -152,7 +231,10 @@ class Generate extends React.Component {
                     <CardContent>
                         <h1>Editor</h1>
                         <div className="editor">
-                            <Editor editorState={this.state.editorState} onChange={this.handleUpdateEditor} />
+                            <ReactQuill value={this.state.preview}
+                                modules={this.modules}
+                                formats={this.formats}
+                                        onChange={this.handleUpdateEditor} />
                         </div>
                     </CardContent>
                     <CardActions>
@@ -165,7 +247,7 @@ class Generate extends React.Component {
                 <Card>
                     <CardContent>
                         <h1>Preview</h1>
-                        <div id="copyToClipboard" dangerouslySetInnerHTML={{__html:this.convertShortCodes()}}>
+                        <div id="copyToClipboard" className={'ql-editor'} dangerouslySetInnerHTML={{__html:this.convertShortCodes()}}>
                         </div>
                     </CardContent>
                     <CardActions>
@@ -175,6 +257,10 @@ class Generate extends React.Component {
                         <Button onClick={this.handleNextPreview}><NavigateNext/></Button>
                     </ButtonGroup>
                     <Button onClick={this.copyToClipboard}>Copy to Clipboard</Button>
+                    <ButtonGroup size="small" aria-label="small outlined button group">
+                        <Button onClick={this.setEncodingNormal}>Normal</Button>
+                        <Button onClick={this.setEncodingWhatsApp}>WhatsApp</Button>
+                    </ButtonGroup>
                     </CardActions>
                 </Card>
             </Grid>
