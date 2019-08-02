@@ -34,7 +34,8 @@ class Generate extends React.Component {
       preview:'',
       currentDefinition:/*Number(localStorage.getItem('currentDefinition'))//*/0,
       editorText:'',
-      encoding:'normal'
+      encoding:'normal',
+      open:false,
   };
 
   modules = {
@@ -75,6 +76,13 @@ class Generate extends React.Component {
     'link', 'image'
   ]
 
+  handleOpen=()=>{
+      this.setState({open:true})
+  }
+
+  handleClose=()=>{
+      this.setState({open:false})
+  }
 
   componentWillMount() {
       if(!this.props.isLoggedIn) {
@@ -192,6 +200,11 @@ class Generate extends React.Component {
         this.setState({encoding:'whatsapp'})
     }
 
+    handleSaveAsTemplate=()=>{
+        // this.setState({dialogHeader:})
+        this.handleOpen();
+    }
+
 
   render = () => {
     return (<Container>
@@ -238,8 +251,13 @@ class Generate extends React.Component {
                         </div>
                     </CardContent>
                     <CardActions>
-                        <Button variant="outlined">Save As Template</Button>
-                        <Button variant="outlined">Save All Messages</Button>
+                        <ButtonGroup size="small" aria-label="small outlined button group">
+                            <Button >Select Template</Button>
+                        </ButtonGroup>
+                        <ButtonGroup size="small" aria-label="small outlined button group">
+                            <Button onClick={this.handleSaveAsTemplate}>Save As Template</Button>
+                            <Button >Save All Messages</Button>
+                        </ButtonGroup>
                     </CardActions>
                 </Card>
             </Grid>
@@ -265,6 +283,18 @@ class Generate extends React.Component {
                 </Card>
             </Grid>
         </Grid>
+        <Dialog open={this.state.open} onClose={this.handleClose} aria-labelledby="form-dialog-title">
+            <DialogTitle id="form-dialog-title">{this.state.dialogTitle}</DialogTitle>
+            <DialogContent>
+            <DialogContentText>
+                {this.state.dialogContentText}
+            </DialogContentText>
+                {this.state.dialogContent}
+            </DialogContent>
+            <DialogActions>
+                {this.state.dialogActions}
+            </DialogActions>
+        </Dialog>
     </Container>);
   }
 }
