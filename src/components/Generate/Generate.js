@@ -227,7 +227,7 @@ class Generate extends React.Component {
                 </Card>
             </Grid>
             <Grid item xs={5}>
-                <Card>
+                <Card className="emoji-container">
                     <CardContent>
                         <h1>Editor</h1>
                         <div className="editor">
