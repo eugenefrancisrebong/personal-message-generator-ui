@@ -36,3 +36,16 @@ html {
     transform: rotate(360deg);
   }
 }
+
+
+.card-container {
+  padding:5px
+}
+
+#outlined-button-file {
+  display:none
+}
+.editor {
+  border: 1px solid grey;
+  padding: 6px;
+ }
