@@ -1,5 +1,7 @@
 import React from 'react';
-import { Container,Card,Grid,Box,TextField,CardActions,Button,Dialog,DialogTitle,DialogActions,DialogContent,DialogContentText,Fab, CardContent,CardHeader,ButtonGroup} from '@material-ui/core';
+import { Container,Card,Grid,Box,TextField,CardActions,Button,Dialog,DialogTitle,
+    DialogActions,DialogContent,DialogContentText,Fab, CardContent,CardHeader,
+    ButtonGroup,List,ListItem,ListItemIcon,ListItemText} from '@material-ui/core';
 import KeyboardArrowLeft from '@material-ui/icons/KeyboardArrowLeft';
 import NavigateBefore from '@material-ui/icons/NavigateBefore';
 import NavigateNext from '@material-ui/icons/NavigateNext';
@@ -11,6 +13,7 @@ import ReactQuill, { Quill } from 'react-quill'; // ES6
 import 'react-quill/dist/quill.snow.css';
 import 'quill-emoji/dist/quill-emoji.css';
 import { /*EmojiBlot, ShortNameEmoji, ToolbarEmoji, TextAreaEmoji , */emojiList} from 'quill-emoji'
+import InboxIcon from '@material-ui/icons/Inbox';
 
 var Block = Quill.import('blots/block');
 var EmojiBlot = Quill.import('formats/emoji')
@@ -36,6 +39,10 @@ class Generate extends React.Component {
       editorText:'',
       encoding:'normal',
       open:false,
+      dialogTitle:'',
+      dialogContent:'',
+      dialogActions:'',
+      dialogDisplay:'save'
   };
 
   modules = {
@@ -201,8 +208,172 @@ class Generate extends React.Component {
     }
 
     handleSaveAsTemplate=()=>{
-        // this.setState({dialogHeader:})
+        this.setState({dialogDisplay:'save'})
         this.handleOpen();
+    }
+
+    handleSelectTemplate=()=>{
+        this.setState({dialogDisplay:'select'})
+        this.handleOpen();
+    }
+
+    handleSaveMessages=()=>{
+        this.setState({dialogDisplay:'messages'})
+        this.handleOpen();
+    }
+
+    renderSaveMessages=()=>{
+        return (<>
+        <DialogTitle id="form-dialog-title">Save Messages</DialogTitle>
+        <DialogContent>
+            <DialogContentText>
+                <TextField
+                    id="templateName"
+                    label="Template Name"
+                    type="text"
+                    name="templateName"
+                    autoComplete="templateName"
+                    margin="normal"
+                    variant="outlined"
+                    value={this.state.templateName}
+                    fullWidth
+                    onChange={this.updateTemplateName}
+                />
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+            <Button variant="outlined" component="span" >
+                Confirm
+            </Button>
+            <Button variant="outlined" onClick={this.handleClose} component="span" >
+                Cancel
+            </Button>
+        </DialogActions>
+        </>)
+    }
+
+    renderSaveAsTemplate=()=>{
+        return (<>
+        <DialogTitle id="form-dialog-title">Save Template</DialogTitle>
+        <DialogContent>
+            <DialogContentText>
+                <TextField
+                    id="templateName"
+                    label="Template Name"
+                    type="text"
+                    name="templateName"
+                    autoComplete="templateName"
+                    margin="normal"
+                    variant="outlined"
+                    value={this.state.templateName}
+                    fullWidth
+                    onChange={this.updateTemplateName}
+                />
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+            <Button variant="outlined" component="span" >
+                Confirm
+            </Button>
+            <Button variant="outlined" onClick={this.setUpdateTemplate}component="span" >
+                Update Template
+            </Button>
+            <Button variant="outlined" onClick={this.handleClose} component="span" >
+                Cancel
+            </Button>
+        </DialogActions>
+        </>)
+    }
+
+    renderUpdateTemplate=()=>{
+        return (<>
+            <DialogTitle id="form-dialog-title">Update Template</DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                    <List component="nav">
+                        <ListItem
+                        button
+                        >
+                        <ListItemIcon>
+                            <InboxIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Template 1" />
+                        </ListItem>
+                        <ListItem
+                        button
+                        >
+                        <ListItemIcon>
+                            <InboxIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Template 2" />
+                        </ListItem>
+                    </List>
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button variant="outlined" component="span" >
+                    Confirm
+                </Button>
+                <Button variant="outlined" onClick={this.setSaveTemplate} component="span" >
+                    Save as Template
+                </Button>
+                <Button variant="outlined" onClick={this.handleClose} component="span" >
+                    Cancel
+                </Button>
+            </DialogActions>
+        </>)
+    }
+
+    renderSelectTemplate=()=>{
+        return (<>
+            <DialogTitle id="form-dialog-title">Select Template</DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                    <List component="nav">
+                        <ListItem
+                        button
+                        >
+                        <ListItemIcon>
+                            <InboxIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Template 1" />
+                        </ListItem>
+                        <ListItem
+                        button
+                        >
+                        <ListItemIcon>
+                            <InboxIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Template 2" />
+                        </ListItem>
+                    </List>
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button variant="outlined" component="span" >
+                    Confirm
+                </Button>
+                <Button variant="outlined" onClick={this.handleClose} component="span" >
+                    Cancel
+                </Button>
+            </DialogActions>
+        </>)
+    }
+
+    setUpdateTemplate=()=>{
+        this.setState({dialogDisplay:'update'})
+    }
+
+    setSelectTemplate=()=>{
+        this.setState({dialogDisplay:'select'})
+    }
+
+    setSaveTemplate=()=>{
+        this.setState({dialogDisplay:'save'})
+    }
+
+    updateTemplateName=(e)=> {
+        this.setState({templateName:e.target.value})
     }
 
 
@@ -252,11 +423,11 @@ class Generate extends React.Component {
                     </CardContent>
                     <CardActions>
                         <ButtonGroup size="small" aria-label="small outlined button group">
-                            <Button >Select Template</Button>
+                            <Button onClick={this.handleSelectTemplate}>Select Template</Button>
                         </ButtonGroup>
                         <ButtonGroup size="small" aria-label="small outlined button group">
                             <Button onClick={this.handleSaveAsTemplate}>Save As Template</Button>
-                            <Button >Save All Messages</Button>
+                            <Button onClick={this.handleSaveMessages}>Save All Messages</Button>
                         </ButtonGroup>
                     </CardActions>
                 </Card>
@@ -284,16 +455,10 @@ class Generate extends React.Component {
             </Grid>
         </Grid>
         <Dialog open={this.state.open} onClose={this.handleClose} aria-labelledby="form-dialog-title">
-            <DialogTitle id="form-dialog-title">{this.state.dialogTitle}</DialogTitle>
-            <DialogContent>
-            <DialogContentText>
-                {this.state.dialogContentText}
-            </DialogContentText>
-                {this.state.dialogContent}
-            </DialogContent>
-            <DialogActions>
-                {this.state.dialogActions}
-            </DialogActions>
+            {this.state.dialogDisplay === 'select' && this.renderSelectTemplate()}
+            {this.state.dialogDisplay === 'messages' && this.renderSaveMessages()}
+            {this.state.dialogDisplay === 'save' && this.renderSaveAsTemplate()}
+            {this.state.dialogDisplay === 'update' && this.renderUpdateTemplate()}
         </Dialog>
     </Container>);
   }
