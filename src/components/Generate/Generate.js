@@ -14,6 +14,7 @@ import 'react-quill/dist/quill.snow.css';
 import 'quill-emoji/dist/quill-emoji.css';
 import { /*EmojiBlot, ShortNameEmoji, ToolbarEmoji, TextAreaEmoji , */emojiList} from 'quill-emoji'
 import InboxIcon from '@material-ui/icons/Inbox';
+import axios from 'axios';
 
 var Block = Quill.import('blots/block');
 var EmojiBlot = Quill.import('formats/emoji')
@@ -42,7 +43,10 @@ class Generate extends React.Component {
       dialogTitle:'',
       dialogContent:'',
       dialogActions:'',
-      dialogDisplay:'save'
+      dialogDisplay:'save',
+      templateName:'',
+      selectedUpdateTemplate:'',
+      templateList:[]
   };
 
   modules = {
@@ -114,6 +118,7 @@ class Generate extends React.Component {
   }
 
   handleUpdateEditor=(value)=>{
+      console.log(typeof this.state.preview)
       this.setState({preview:value})
     
   }
@@ -213,6 +218,7 @@ class Generate extends React.Component {
     }
 
     handleSelectTemplate=()=>{
+        this.renderTemplates()
         this.setState({dialogDisplay:'select'})
         this.handleOpen();
     }
@@ -220,6 +226,64 @@ class Generate extends React.Component {
     handleSaveMessages=()=>{
         this.setState({dialogDisplay:'messages'})
         this.handleOpen();
+    }
+
+    updateSaveTemplateName=(e)=>{
+        this.setState({templateName:e.target.value})
+    }
+
+    handleSetUpdateTemplate=(e)=>{
+        this.setState({selectedUpdateTemplate:e})
+    }
+
+    handleSelectCurrentTemplate = async (e)=> {
+        console.log(e,`${process.env.REACT_APP_API_URL}templates/search/${e}`)
+        let templates = await axios.get(`${process.env.REACT_APP_API_URL}templates/search/${e}`);
+        const data = templates.data
+        console.log(data[0].Content);
+        this.setState({preview:data[0].Content})
+        this.handleClose();
+    }
+
+    handleRequestUpdateTemplate=(e)=> {
+        if(this.state.preview!=="") {
+            axios.post(`${process.env.REACT_APP_API_URL}templates/update/${this.state.selectedUpdateTemplate}`,{content:this.state.preview,commitby:this.props.userData.ID})
+            .then((response)=>{
+              if(response.data) {
+                  if(response.data.code==='ER_DUP_ENTRY') {
+                    console.log(response.data)
+                  } else {
+                    console.log(response.data)
+                    this.handleClose();
+                    this.setState({templateName:''})
+                  }
+              }
+            })
+            .catch(function(error){
+                console.log(error)
+            }) 
+        } else {
+            this.handleClose();
+            console.log('empty content')
+        }
+    }
+
+    handleRequestSaveTemplate=(e)=>{
+        axios.post(`${process.env.REACT_APP_API_URL}templates/create`,{title:this.state.templateName,content:this.state.preview,commitby:this.props.userData.ID})
+        .then((response)=>{
+          if(response.data) {
+              if(response.data.code==='ER_DUP_ENTRY') {
+                console.log(response.data)
+              } else {
+                console.log(response.data)
+                this.handleClose();
+                this.setState({templateName:''})
+              }
+          }
+        })
+        .catch(function(error){
+            console.log(error)
+        }) 
     }
 
     renderSaveMessages=()=>{
@@ -237,7 +301,7 @@ class Generate extends React.Component {
                     variant="outlined"
                     value={this.state.templateName}
                     fullWidth
-                    onChange={this.updateTemplateName}
+                    onChange={this.updateSaveTemplateName}
                 />
             </DialogContentText>
         </DialogContent>
@@ -267,12 +331,12 @@ class Generate extends React.Component {
                     variant="outlined"
                     value={this.state.templateName}
                     fullWidth
-                    onChange={this.updateTemplateName}
+                    onChange={this.updateSaveTemplateName}
                 />
             </DialogContentText>
         </DialogContent>
         <DialogActions>
-            <Button variant="outlined" component="span" >
+            <Button variant="outlined" component="span" onClick={this.handleRequestSaveTemplate}>
                 Confirm
             </Button>
             <Button variant="outlined" onClick={this.setUpdateTemplate}component="span" >
@@ -285,33 +349,37 @@ class Generate extends React.Component {
         </>)
     }
 
+    renderTemplates=async ()=>{
+        let templates = await axios.get(`${process.env.REACT_APP_API_URL}templates/search`);
+        const data = templates.data
+        this.setState({templateList:data})
+    }
+
     renderUpdateTemplate=()=>{
+        const templates =this.state.templateList; 
         return (<>
             <DialogTitle id="form-dialog-title">Update Template</DialogTitle>
             <DialogContent>
                 <DialogContentText>
                     <List component="nav">
-                        <ListItem
+                        {templates.map((template)=>{
+                        return (<ListItem
                         button
+                        key={template.ID}
+                        onClick={()=>{this.handleSetUpdateTemplate(template.ID)}}
+                        selected={this.state.selectedUpdateTemplate===template.ID}
                         >
                         <ListItemIcon>
                             <InboxIcon />
                         </ListItemIcon>
-                        <ListItemText primary="Template 1" />
-                        </ListItem>
-                        <ListItem
-                        button
-                        >
-                        <ListItemIcon>
-                            <InboxIcon />
-                        </ListItemIcon>
-                        <ListItemText primary="Template 2" />
-                        </ListItem>
+                        <ListItemText primary={template.Title} />
+                        </ListItem>)
+                        })}
                     </List>
                 </DialogContentText>
             </DialogContent>
             <DialogActions>
-                <Button variant="outlined" component="span" >
+                <Button variant="outlined" onClick={this.handleRequestUpdateTemplate} component="span" >
                     Confirm
                 </Button>
                 <Button variant="outlined" onClick={this.setSaveTemplate} component="span" >
@@ -325,34 +393,29 @@ class Generate extends React.Component {
     }
 
     renderSelectTemplate=()=>{
+        const templates =this.state.templateList; 
         return (<>
             <DialogTitle id="form-dialog-title">Select Template</DialogTitle>
             <DialogContent>
                 <DialogContentText>
                     <List component="nav">
-                        <ListItem
+                        {templates.map((template)=>{
+                        return (<ListItem
                         button
+                        key={template.ID}
+                        onClick={()=>{this.handleSelectCurrentTemplate(template.ID)}}
+                        selected={this.state.selectedUpdateTemplate===template.ID}
                         >
                         <ListItemIcon>
                             <InboxIcon />
                         </ListItemIcon>
-                        <ListItemText primary="Template 1" />
-                        </ListItem>
-                        <ListItem
-                        button
-                        >
-                        <ListItemIcon>
-                            <InboxIcon />
-                        </ListItemIcon>
-                        <ListItemText primary="Template 2" />
-                        </ListItem>
+                        <ListItemText primary={template.Title} />
+                        </ListItem>)
+                        })}
                     </List>
                 </DialogContentText>
             </DialogContent>
             <DialogActions>
-                <Button variant="outlined" component="span" >
-                    Confirm
-                </Button>
                 <Button variant="outlined" onClick={this.handleClose} component="span" >
                     Cancel
                 </Button>
@@ -361,6 +424,7 @@ class Generate extends React.Component {
     }
 
     setUpdateTemplate=()=>{
+        this.renderTemplates()
         this.setState({dialogDisplay:'update'})
     }
 
