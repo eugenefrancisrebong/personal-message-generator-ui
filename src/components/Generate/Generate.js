@@ -32,11 +32,11 @@ Quill.register(TextAreaEmoji, true);
 class Generate extends React.Component {
   state = {
       title:'',
-      columns: /*localStorage.getItem('columns').split(','),*/[],
-      definitions:/*JSON.parse(localStorage.getItem('definitions')),*/{},
+      columns: /*localStorage.getItem('columns').split(','),//*/[],
+      definitions:/*JSON.parse(localStorage.getItem('definitions')),//*/{},
       editorState:EditorState.createEmpty(), 
-      preview:'',
-      currentDefinition:/*Number(localStorage.getItem('currentDefinition'))//*/0,
+      preview:/*localStorage.getItem('preview'),//*/'',
+      currentDefinition:/*Number(localStorage.getItem('currentDefinition')),//*/0,
       editorText:'',
       encoding:'normal',
       open:false,
@@ -46,7 +46,9 @@ class Generate extends React.Component {
       dialogDisplay:'save',
       templateName:'',
       selectedUpdateTemplate:'',
-      templateList:[]
+      templateList:[],
+      uploadedCSV:undefined,
+      messageName:''
   };
 
   modules = {
@@ -155,6 +157,7 @@ class Generate extends React.Component {
   onUploadCSV=(e)=>{
     const reader = new FileReader();
     let file = e.target.files[0];
+    this.setState({uploadedCSV:file})
     reader.onload = (event) => {
         const text = event.target.result;
         this.parseCSV(text);
@@ -240,8 +243,7 @@ class Generate extends React.Component {
         console.log(e,`${process.env.REACT_APP_API_URL}templates/search/${e}`)
         let templates = await axios.get(`${process.env.REACT_APP_API_URL}templates/search/${e}`);
         const data = templates.data
-        console.log(data[0].Content);
-        this.setState({preview:data[0].Content})
+        this.setState({preview:unescape(data[0].Content)})
         this.handleClose();
     }
 
@@ -263,27 +265,79 @@ class Generate extends React.Component {
                 console.log(error)
             }) 
         } else {
+            alert('empty content')
             this.handleClose();
-            console.log('empty content')
         }
     }
 
     handleRequestSaveTemplate=(e)=>{
-        axios.post(`${process.env.REACT_APP_API_URL}templates/create`,{title:this.state.templateName,content:this.state.preview,commitby:this.props.userData.ID})
-        .then((response)=>{
-          if(response.data) {
-              if(response.data.code==='ER_DUP_ENTRY') {
-                console.log(response.data)
-              } else {
-                console.log(response.data)
-                this.handleClose();
-                this.setState({templateName:''})
+        if(this.state.templateName.trim()==='') {
+            alert('Please Add Template Name')
+        } else if (this.state.preview.trim()==='') {
+            alert('Template is Empty')
+        } else {
+            axios.post(`${process.env.REACT_APP_API_URL}templates/create`,{title:this.state.templateName,content:this.state.preview,commitby:this.props.userData.ID})
+            .then((response)=>{
+              if(response.data) {
+                  if(response.data.code==='ER_DUP_ENTRY' || response.data.code==='ER_PARSE_ERROR') {
+                    alert('Unable to Save to Database. Contact Administrator')
+                  } else {
+                    console.log(response.data)
+                    this.handleClose();
+                    this.setState({templateName:''})
+                  }
               }
-          }
-        })
-        .catch(function(error){
-            console.log(error)
-        }) 
+            })
+            .catch(function(error){
+                console.log(error)
+            }) 
+        }
+    }
+
+    handleRequestSaveMessages=(e)=>{
+        if(this.state.messageName.trim()==='') {
+            alert('Please add Name to the Message')
+        } else if (this.state.preview==='') {
+            alert('Editor is Empty')
+        } else if (this.state.uploadedCSV===undefined) {
+            alert('no CSV Uploaded')
+        } else {
+            const url = `${process.env.REACT_APP_API_URL}messages/save`;
+            const formData = new FormData();
+            formData.append('csvfile',this.state.uploadedCSV)
+            formData.append('title',this.state.messageName)
+            formData.append('content',this.state.preview)
+            formData.append('commitby',this.props.userData.ID)
+            const config = {
+                headers: {
+                    'content-type': 'multipart/form-data'
+                }
+            }
+            axios.post(url, formData,config)        
+            .then((response)=>{
+                if(response.data.affectedRows>=0) {
+                    this.handleClose();
+                } else {
+                    alert('Failed to Save Messages');
+                    this.handleClose();
+                }
+            })
+            .catch(function(error){
+                alert('Failed to Save Messages');
+                this.handleClose();
+            }) 
+        }
+        // axios.post(`${process.env.REACT_APP_API_URL}messages/save`,{title:this.state.messageName,content:this.state.preview,csvfile:this.state.uploadedCSV,commitby:this.props.userData.ID})
+        // .then((response)=>{
+        //     console.log(response);
+        // })
+        // .catch(function(error){
+        //     console.log(error);
+        // }) 
+    }
+
+    updateSaveMessageName=(e) =>{
+        this.setState({messageName:e.target.value})
     }
 
     renderSaveMessages=()=>{
@@ -293,20 +347,20 @@ class Generate extends React.Component {
             <DialogContentText>
                 <TextField
                     id="templateName"
-                    label="Template Name"
+                    label="Message Group Name"
                     type="text"
                     name="templateName"
                     autoComplete="templateName"
                     margin="normal"
                     variant="outlined"
-                    value={this.state.templateName}
+                    value={this.state.messageName}
                     fullWidth
-                    onChange={this.updateSaveTemplateName}
+                    onChange={this.updateSaveMessageName}
                 />
             </DialogContentText>
         </DialogContent>
         <DialogActions>
-            <Button variant="outlined" component="span" >
+            <Button variant="outlined" onClick={this.handleRequestSaveMessages}component="span" >
                 Confirm
             </Button>
             <Button variant="outlined" onClick={this.handleClose} component="span" >
@@ -372,7 +426,7 @@ class Generate extends React.Component {
                         <ListItemIcon>
                             <InboxIcon />
                         </ListItemIcon>
-                        <ListItemText primary={template.Title} />
+                        <ListItemText primary={unescape(template.Title)} />
                         </ListItem>)
                         })}
                     </List>
@@ -409,7 +463,7 @@ class Generate extends React.Component {
                         <ListItemIcon>
                             <InboxIcon />
                         </ListItemIcon>
-                        <ListItemText primary={template.Title} />
+                        <ListItemText primary={unescape(template.Title)} />
                         </ListItem>)
                         })}
                     </List>
@@ -465,6 +519,7 @@ class Generate extends React.Component {
                             multiple
                             type="file"
                             onChange={this.onUploadCSV}
+                            accept=".csv"
                         />
                         <label htmlFor="outlined-button-file">
                             <Button variant="outlined" component="span" >
