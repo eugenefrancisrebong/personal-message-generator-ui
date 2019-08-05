@@ -1,5 +1,7 @@
 import React from 'react';
-import { Container,Card,Grid,Box,TextField,CardActions,Button,Dialog,DialogTitle,DialogActions,DialogContent,DialogContentText,Fab, CardContent,CardHeader,ButtonGroup} from '@material-ui/core';
+import { Container,Card,Grid,Box,TextField,CardActions,Button,Dialog,DialogTitle,
+    DialogActions,DialogContent,DialogContentText,Fab, CardContent,CardHeader,
+    ButtonGroup,List,ListItem,ListItemIcon,ListItemText} from '@material-ui/core';
 import KeyboardArrowLeft from '@material-ui/icons/KeyboardArrowLeft';
 import NavigateBefore from '@material-ui/icons/NavigateBefore';
 import NavigateNext from '@material-ui/icons/NavigateNext';
@@ -11,6 +13,8 @@ import ReactQuill, { Quill } from 'react-quill'; // ES6
 import 'react-quill/dist/quill.snow.css';
 import 'quill-emoji/dist/quill-emoji.css';
 import { /*EmojiBlot, ShortNameEmoji, ToolbarEmoji, TextAreaEmoji , */emojiList} from 'quill-emoji'
+import InboxIcon from '@material-ui/icons/Inbox';
+import axios from 'axios';
 
 var Block = Quill.import('blots/block');
 var EmojiBlot = Quill.import('formats/emoji')
@@ -28,13 +32,23 @@ Quill.register(TextAreaEmoji, true);
 class Generate extends React.Component {
   state = {
       title:'',
-      columns: /*localStorage.getItem('columns').split(','),*/[],
-      definitions:/*JSON.parse(localStorage.getItem('definitions')),*/{},
+      columns: /*localStorage.getItem('columns').split(','),//*/[],
+      definitions:/*JSON.parse(localStorage.getItem('definitions')),//*/{},
       editorState:EditorState.createEmpty(), 
-      preview:'',
-      currentDefinition:/*Number(localStorage.getItem('currentDefinition'))//*/0,
+      preview:/*localStorage.getItem('preview'),//*/'',
+      currentDefinition:/*Number(localStorage.getItem('currentDefinition')),//*/0,
       editorText:'',
-      encoding:'normal'
+      encoding:'normal',
+      open:false,
+      dialogTitle:'',
+      dialogContent:'',
+      dialogActions:'',
+      dialogDisplay:'save',
+      templateName:'',
+      selectedUpdateTemplate:'',
+      templateList:[],
+      uploadedCSV:undefined,
+      messageName:''
   };
 
   modules = {
@@ -75,6 +89,13 @@ class Generate extends React.Component {
     'link', 'image'
   ]
 
+  handleOpen=()=>{
+      this.setState({open:true})
+  }
+
+  handleClose=()=>{
+      this.setState({open:false})
+  }
 
   componentWillMount() {
       if(!this.props.isLoggedIn) {
@@ -99,6 +120,7 @@ class Generate extends React.Component {
   }
 
   handleUpdateEditor=(value)=>{
+      console.log(typeof this.state.preview)
       this.setState({preview:value})
     
   }
@@ -135,6 +157,7 @@ class Generate extends React.Component {
   onUploadCSV=(e)=>{
     const reader = new FileReader();
     let file = e.target.files[0];
+    this.setState({uploadedCSV:file})
     reader.onload = (event) => {
         const text = event.target.result;
         this.parseCSV(text);
@@ -192,6 +215,285 @@ class Generate extends React.Component {
         this.setState({encoding:'whatsapp'})
     }
 
+    handleSaveAsTemplate=()=>{
+        this.setState({dialogDisplay:'save'})
+        this.handleOpen();
+    }
+
+    handleSelectTemplate=()=>{
+        this.renderTemplates()
+        this.setState({dialogDisplay:'select'})
+        this.handleOpen();
+    }
+
+    handleSaveMessages=()=>{
+        this.setState({dialogDisplay:'messages'})
+        this.handleOpen();
+    }
+
+    updateSaveTemplateName=(e)=>{
+        this.setState({templateName:e.target.value})
+    }
+
+    handleSetUpdateTemplate=(e)=>{
+        this.setState({selectedUpdateTemplate:e})
+    }
+
+    handleSelectCurrentTemplate = async (e)=> {
+        console.log(e,`${process.env.REACT_APP_API_URL}templates/search/${e}`)
+        let templates = await axios.get(`${process.env.REACT_APP_API_URL}templates/search/${e}`);
+        const data = templates.data
+        this.setState({preview:unescape(data[0].Content)})
+        this.handleClose();
+    }
+
+    handleRequestUpdateTemplate=(e)=> {
+        if(this.state.preview!=="") {
+            axios.post(`${process.env.REACT_APP_API_URL}templates/update/${this.state.selectedUpdateTemplate}`,{content:this.state.preview,commitby:this.props.userData.ID})
+            .then((response)=>{
+              if(response.data) {
+                  if(response.data.code==='ER_DUP_ENTRY') {
+                    console.log(response.data)
+                  } else {
+                    console.log(response.data)
+                    this.handleClose();
+                    this.setState({templateName:''})
+                  }
+              }
+            })
+            .catch(function(error){
+                console.log(error)
+            }) 
+        } else {
+            alert('empty content')
+            this.handleClose();
+        }
+    }
+
+    handleRequestSaveTemplate=(e)=>{
+        if(this.state.templateName.trim()==='') {
+            alert('Please Add Template Name')
+        } else if (this.state.preview.trim()==='') {
+            alert('Template is Empty')
+        } else {
+            axios.post(`${process.env.REACT_APP_API_URL}templates/create`,{title:this.state.templateName,content:this.state.preview,commitby:this.props.userData.ID})
+            .then((response)=>{
+              if(response.data) {
+                  if(response.data.code==='ER_DUP_ENTRY' || response.data.code==='ER_PARSE_ERROR') {
+                    alert('Unable to Save to Database. Contact Administrator')
+                  } else {
+                    console.log(response.data)
+                    this.handleClose();
+                    this.setState({templateName:''})
+                  }
+              }
+            })
+            .catch(function(error){
+                console.log(error)
+            }) 
+        }
+    }
+
+    handleRequestSaveMessages=(e)=>{
+        if(this.state.messageName.trim()==='') {
+            alert('Please add Name to the Message')
+        } else if (this.state.preview==='') {
+            alert('Editor is Empty')
+        } else if (this.state.uploadedCSV===undefined) {
+            alert('no CSV Uploaded')
+        } else {
+            const url = `${process.env.REACT_APP_API_URL}messages/save`;
+            const formData = new FormData();
+            formData.append('csvfile',this.state.uploadedCSV)
+            formData.append('title',this.state.messageName)
+            formData.append('content',this.state.preview)
+            formData.append('commitby',this.props.userData.ID)
+            const config = {
+                headers: {
+                    'content-type': 'multipart/form-data'
+                }
+            }
+            axios.post(url, formData,config)        
+            .then((response)=>{
+                if(response.data.affectedRows>=0) {
+                    this.handleClose();
+                } else {
+                    alert('Failed to Save Messages');
+                    this.handleClose();
+                }
+            })
+            .catch(function(error){
+                alert('Failed to Save Messages');
+                this.handleClose();
+            }) 
+        }
+        // axios.post(`${process.env.REACT_APP_API_URL}messages/save`,{title:this.state.messageName,content:this.state.preview,csvfile:this.state.uploadedCSV,commitby:this.props.userData.ID})
+        // .then((response)=>{
+        //     console.log(response);
+        // })
+        // .catch(function(error){
+        //     console.log(error);
+        // }) 
+    }
+
+    updateSaveMessageName=(e) =>{
+        this.setState({messageName:e.target.value})
+    }
+
+    renderSaveMessages=()=>{
+        return (<>
+        <DialogTitle id="form-dialog-title">Save Messages</DialogTitle>
+        <DialogContent>
+            <DialogContentText>
+                <TextField
+                    id="templateName"
+                    label="Message Group Name"
+                    type="text"
+                    name="templateName"
+                    autoComplete="templateName"
+                    margin="normal"
+                    variant="outlined"
+                    value={this.state.messageName}
+                    fullWidth
+                    onChange={this.updateSaveMessageName}
+                />
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+            <Button variant="outlined" onClick={this.handleRequestSaveMessages}component="span" >
+                Confirm
+            </Button>
+            <Button variant="outlined" onClick={this.handleClose} component="span" >
+                Cancel
+            </Button>
+        </DialogActions>
+        </>)
+    }
+
+    renderSaveAsTemplate=()=>{
+        return (<>
+        <DialogTitle id="form-dialog-title">Save Template</DialogTitle>
+        <DialogContent>
+            <DialogContentText>
+                <TextField
+                    id="templateName"
+                    label="Template Name"
+                    type="text"
+                    name="templateName"
+                    autoComplete="templateName"
+                    margin="normal"
+                    variant="outlined"
+                    value={this.state.templateName}
+                    fullWidth
+                    onChange={this.updateSaveTemplateName}
+                />
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+            <Button variant="outlined" component="span" onClick={this.handleRequestSaveTemplate}>
+                Confirm
+            </Button>
+            <Button variant="outlined" onClick={this.setUpdateTemplate}component="span" >
+                Update Template
+            </Button>
+            <Button variant="outlined" onClick={this.handleClose} component="span" >
+                Cancel
+            </Button>
+        </DialogActions>
+        </>)
+    }
+
+    renderTemplates=async ()=>{
+        let templates = await axios.get(`${process.env.REACT_APP_API_URL}templates/search`);
+        const data = templates.data
+        this.setState({templateList:data})
+    }
+
+    renderUpdateTemplate=()=>{
+        const templates =this.state.templateList; 
+        return (<>
+            <DialogTitle id="form-dialog-title">Update Template</DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                    <List component="nav">
+                        {templates.map((template)=>{
+                        return (<ListItem
+                        button
+                        key={template.ID}
+                        onClick={()=>{this.handleSetUpdateTemplate(template.ID)}}
+                        selected={this.state.selectedUpdateTemplate===template.ID}
+                        >
+                        <ListItemIcon>
+                            <InboxIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={unescape(template.Title)} />
+                        </ListItem>)
+                        })}
+                    </List>
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button variant="outlined" onClick={this.handleRequestUpdateTemplate} component="span" >
+                    Confirm
+                </Button>
+                <Button variant="outlined" onClick={this.setSaveTemplate} component="span" >
+                    Save as Template
+                </Button>
+                <Button variant="outlined" onClick={this.handleClose} component="span" >
+                    Cancel
+                </Button>
+            </DialogActions>
+        </>)
+    }
+
+    renderSelectTemplate=()=>{
+        const templates =this.state.templateList; 
+        return (<>
+            <DialogTitle id="form-dialog-title">Select Template</DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                    <List component="nav">
+                        {templates.map((template)=>{
+                        return (<ListItem
+                        button
+                        key={template.ID}
+                        onClick={()=>{this.handleSelectCurrentTemplate(template.ID)}}
+                        selected={this.state.selectedUpdateTemplate===template.ID}
+                        >
+                        <ListItemIcon>
+                            <InboxIcon />
+                        </ListItemIcon>
+                        <ListItemText primary={unescape(template.Title)} />
+                        </ListItem>)
+                        })}
+                    </List>
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button variant="outlined" onClick={this.handleClose} component="span" >
+                    Cancel
+                </Button>
+            </DialogActions>
+        </>)
+    }
+
+    setUpdateTemplate=()=>{
+        this.renderTemplates()
+        this.setState({dialogDisplay:'update'})
+    }
+
+    setSelectTemplate=()=>{
+        this.setState({dialogDisplay:'select'})
+    }
+
+    setSaveTemplate=()=>{
+        this.setState({dialogDisplay:'save'})
+    }
+
+    updateTemplateName=(e)=> {
+        this.setState({templateName:e.target.value})
+    }
+
 
   render = () => {
     return (<Container>
@@ -217,6 +519,7 @@ class Generate extends React.Component {
                             multiple
                             type="file"
                             onChange={this.onUploadCSV}
+                            accept=".csv"
                         />
                         <label htmlFor="outlined-button-file">
                             <Button variant="outlined" component="span" >
@@ -238,8 +541,13 @@ class Generate extends React.Component {
                         </div>
                     </CardContent>
                     <CardActions>
-                        <Button variant="outlined">Save As Template</Button>
-                        <Button variant="outlined">Save All Messages</Button>
+                        <ButtonGroup size="small" aria-label="small outlined button group">
+                            <Button onClick={this.handleSelectTemplate}>Select Template</Button>
+                        </ButtonGroup>
+                        <ButtonGroup size="small" aria-label="small outlined button group">
+                            <Button onClick={this.handleSaveAsTemplate}>Save As Template</Button>
+                            <Button onClick={this.handleSaveMessages}>Save All Messages</Button>
+                        </ButtonGroup>
                     </CardActions>
                 </Card>
             </Grid>
@@ -265,6 +573,12 @@ class Generate extends React.Component {
                 </Card>
             </Grid>
         </Grid>
+        <Dialog open={this.state.open} onClose={this.handleClose} aria-labelledby="form-dialog-title">
+            {this.state.dialogDisplay === 'select' && this.renderSelectTemplate()}
+            {this.state.dialogDisplay === 'messages' && this.renderSaveMessages()}
+            {this.state.dialogDisplay === 'save' && this.renderSaveAsTemplate()}
+            {this.state.dialogDisplay === 'update' && this.renderUpdateTemplate()}
+        </Dialog>
     </Container>);
   }
 }
