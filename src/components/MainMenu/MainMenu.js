@@ -32,6 +32,12 @@ class MainMenu extends React.Component {
     handleGotoGenerate=()=>{
         this.props.history.push('/generate')
     }
+    handleGotoMessages=()=>{
+        this.props.history.push('/messages')
+    }
+    handleGotoTemplates=()=>{
+        this.props.history.push('/templates')
+    }
   render = () => {
     return (
         <Container>
@@ -40,8 +46,8 @@ class MainMenu extends React.Component {
               <Box className="center-form-content" >
                 <Card className="form-card">
                     <Button fullWidth size="large" variant="outlined" onClick={this.handleGotoGenerate}><AddIcon /> Generate</Button>
-                    <Button fullWidth size="large" variant="outlined"><DescriptionIcon /> Templates</Button>
-                    <Button fullWidth size="large" variant="outlined"><MessageIcon /> Messages</Button>
+                    <Button fullWidth size="large" variant="outlined" onClick={this.handleGotoTemplates}><DescriptionIcon /> Templates</Button>
+                    <Button fullWidth size="large" variant="outlined" onClick={this.handleGotoMessages}><MessageIcon /> Messages</Button>
                     {this.props.userData.PermissionLevel>=1 && <Button fullWidth size="large" variant="outlined" onClick={this.handleGotoUsers}><SAIcon /> Users</Button>}
                     <Button fullWidth size="large" variant="outlined" onClick={this.handleLogOut}><OffIcon /> Log Out</Button>
                 </Card>

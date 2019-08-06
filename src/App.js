@@ -5,6 +5,8 @@ import Login from './components/Login/Login.js'
 import MainMenu from './components/MainMenu/MainMenu.js'
 import Users from './components/Users/Users.js'
 import Generate from './components/Generate/Generate.js'
+import Messages from './components/Messages/Messages.js'
+import Templates from './components/Templates/Templates.js'
 import { BrowserRouter as Router, Route, Link } from "react-router-dom";
 import { CookiesProvider } from 'react-cookie';
 import { withCookies,Cookies } from 'react-cookie';
@@ -70,6 +72,13 @@ class App extends React.Component {
     return (<Generate isLoggedIn={this.state.isLoggedIn} userData={this.state.userData}></Generate>)
   }
 
+  MessagesComponent = () => {
+    return(<Messages  isLoggedIn={this.state.isLoggedIn} userData={this.state.userData}></Messages>)
+  }
+  TemplatesComponent = () => {
+    return(<Templates  isLoggedIn={this.state.isLoggedIn} userData={this.state.userData}></Templates>)
+  }
+
   render = () => {
     
     return (<CookiesProvider>
@@ -79,6 +88,8 @@ class App extends React.Component {
         <Route path="/home" component={this.MainMenuComponent}></Route>
         <Route path="/users" component={this.UsersComponent}></Route>
         <Route path="/generate" component={this.GenerateComponent}></Route>
+        <Route path="/messages" component={this.MessagesComponent}></Route>
+        <Route path="/templates" component={this.TemplatesComponent}></Route>
       </Router>
       </CookiesProvider>
     );
