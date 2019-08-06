@@ -120,13 +120,11 @@ class Generate extends React.Component {
   }
 
   handleUpdateEditor=(value)=>{
-      console.log(typeof this.state.preview)
       this.setState({preview:value})
     
   }
 
   convertShortCodes=()=>{
-      console.log('convert');
     if(this.state.currentDefinition!==0) {
         const currentRecord = this.state.definitions[this.state.currentDefinition-1];
         let data = this.state.preview;
@@ -240,7 +238,6 @@ class Generate extends React.Component {
     }
 
     handleSelectCurrentTemplate = async (e)=> {
-        console.log(e,`${process.env.REACT_APP_API_URL}templates/search/${e}`)
         let templates = await axios.get(`${process.env.REACT_APP_API_URL}templates/search/${e}`);
         const data = templates.data
         this.setState({preview:unescape(data[0].Content)})
@@ -253,9 +250,7 @@ class Generate extends React.Component {
             .then((response)=>{
               if(response.data) {
                   if(response.data.code==='ER_DUP_ENTRY') {
-                    console.log(response.data)
                   } else {
-                    console.log(response.data)
                     this.handleClose();
                     this.setState({templateName:''})
                   }
@@ -282,7 +277,6 @@ class Generate extends React.Component {
                   if(response.data.code==='ER_DUP_ENTRY' || response.data.code==='ER_PARSE_ERROR') {
                     alert('Unable to Save to Database. Contact Administrator')
                   } else {
-                    console.log(response.data)
                     this.handleClose();
                     this.setState({templateName:''})
                   }
@@ -490,6 +484,16 @@ class Generate extends React.Component {
         this.setState({dialogDisplay:'save'})
     }
 
+    setCurrentPreview=(e)=>{
+        if(e.target.value<=this.state.definitions.length && e.target.value>=0) {
+            if(e.target.value==0) {
+                this.setState({currentDefinition:1})
+            } else {
+                this.setState({currentDefinition:e.target.value})
+            }
+        }
+    }
+
     updateTemplateName=(e)=> {
         this.setState({templateName:e.target.value})
     }
@@ -559,11 +563,16 @@ class Generate extends React.Component {
                         </div>
                     </CardContent>
                     <CardActions>
-                    <ButtonGroup size="small" aria-label="small outlined button group">
-                        <Button onClick={this.handlePreviousPreview}><NavigateBefore/></Button>
-                        <Button disabled>{this.state.currentDefinition}/{this.state.definitions.length}</Button>
-                        <Button onClick={this.handleNextPreview}><NavigateNext/></Button>
-                    </ButtonGroup>
+                    <Button onClick={this.handlePreviousPreview}><NavigateBefore/></Button>
+                    
+                    <TextField
+                        value={this.state.currentDefinition}
+                        margin="normal"
+                        style={{width:40,margin:0}}
+                        onChange={this.setCurrentPreview}
+                    />/{this.state.definitions.length}
+
+                    <Button onClick={this.handleNextPreview}><NavigateNext/></Button>
                     <Button onClick={this.copyToClipboard}>Copy to Clipboard</Button>
                     <ButtonGroup size="small" aria-label="small outlined button group">
                         <Button onClick={this.setEncodingNormal}>Normal</Button>
