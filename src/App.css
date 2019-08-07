@@ -49,3 +49,7 @@ html {
 .emoji-container {
   overflow: visible !important;
 }
+
+.nested {
+  padding-left: 40px !important;
+}
