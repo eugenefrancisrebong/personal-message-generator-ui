@@ -127,8 +127,6 @@ class Messages extends React.Component {
           }
     }
     setCurrentSelectedData=(e) =>{
-        console.log(e.target.value);
-        console.log(e.target.value<this.state.currentData.length && e.target.value>0);
         if(e.target.value<=this.state.currentData.length && e.target.value>=0) {
             if(e.target.value==0) {
                 this.setState({currentSelectedData:1})
@@ -160,14 +158,6 @@ class Messages extends React.Component {
             .replace(strikethrough_start,'<s>~')
             .replace(strikethrough_end,'~</s>')
     }
-    // let values = this.state.currentData[this.state.currentSelectedData];
-    // if(values.length) {
-    //     values=values.split(',')
-    //     this.state.currentHeaders.forEach((column,index)=>{
-    //         var re = new RegExp("\\["+column+"\\]", 'g');
-    //         content = content.replace(re,values[column]);
-    //     })
-    // }
 
 
     return (<Container>

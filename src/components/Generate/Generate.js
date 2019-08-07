@@ -55,7 +55,10 @@ class Generate extends React.Component {
       templateGroups:[],
       currentTemplateGroup:0,
       currentTemplateGroupName:'',
-      templateGroupDrawers:{}
+      templateGroupDrawers:{},
+      messageGroups:[],
+      currentMessageGroup:0,
+      currentMessageGroupName:'',
   };
 
   modules = {
@@ -223,8 +226,11 @@ class Generate extends React.Component {
     getTemplateGroups= async ()=>{
         let groups = await axios.get(`${process.env.REACT_APP_API_URL}templates/groups/`);
         this.setState({templateGroups:groups.data});
-        // this.setState({preview:unescape(data[0].Content)})
-        // this.handleClose();
+    }
+
+    getMessageGroups= async ()=>{
+        let groups = await axios.get(`${process.env.REACT_APP_API_URL}messages/groups/`);
+        this.setState({messageGroups:groups.data});
     }
 
     handleSaveAsTemplate=()=>{
@@ -241,6 +247,7 @@ class Generate extends React.Component {
     }
 
     handleSaveMessages=()=>{
+        this.getMessageGroups();
         this.setState({dialogDisplay:'messages'})
         this.handleOpen();
     }
@@ -292,10 +299,30 @@ class Generate extends React.Component {
                 if(response.data) {
                     console.log(response.data);
                     if(response.data[0]){
-                        alert('Template already Exists. Try another name')
+                        alert('Template Group already Exists. Try another name')
                     }else if(response.data.affectedRows>=0) {
                         this.handleClose();
-                        this.setState({templateName:''})
+                      } else {
+                          this.handleClose();
+                    }
+                }
+            }
+        })
+        .catch(function(error){
+            console.log(error)
+        }) 
+    }
+
+    handleRequestNewMessageGroup=async (e)=> {
+        axios.post(`${process.env.REACT_APP_API_URL}messages/groups/create/`,{title:this.state.currentMessageGroupName,commitby:this.props.userData.ID})
+        .then((response)=>{
+            if(response.data) {
+                if(response.data) {
+                    console.log(response.data);
+                    if(response.data[0]){
+                        alert('Message Group already Exists. Try another name')
+                    }else if(response.data.affectedRows>=0) {
+                        this.handleClose();
                       } else {
                           this.handleClose();
                     }
@@ -309,6 +336,10 @@ class Generate extends React.Component {
 
     updateCurrentTemplateGroupName = (e) =>{
         this.setState({currentTemplateGroupName:e.target.value})
+    }
+
+    updateCurrentMessageGroupName = (e) =>{
+        this.setState({currentMessageGroupName:e.target.value})
     }
 
 
@@ -327,7 +358,7 @@ class Generate extends React.Component {
                         variant="outlined"
                         value={this.state.currentTemplateGroupName}
                         fullWidth
-                        onChange={this.updateCurrentTemplateGroupName}
+                        onChange={this.updateCurrentMessageGroupName}
                     />
                 </DialogContentText>
             </DialogContent>
@@ -337,6 +368,39 @@ class Generate extends React.Component {
                 </Button>
                 <Button variant="outlined" onClick={()=>{
                     this.setState({dialogDisplay:'save'})
+                }} component="span" >
+                    Cancel
+                </Button>
+            </DialogActions>
+            </>)
+    }
+
+
+    renderNewMessageGroup=()=>{
+        return (<>
+            <DialogTitle id="form-dialog-title">Create New Message Group</DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                    <TextField
+                        id="messageGroupName"
+                        label="Message Group Name"
+                        type="text"
+                        name="messageGroupName"
+                        autoComplete="messageGroupName"
+                        margin="normal"
+                        variant="outlined"
+                        value={this.state.currentMessageGroupName}
+                        fullWidth
+                        onChange={this.updateCurrentMessageGroupName}
+                    />
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button variant="outlined" onClick={this.handleRequestNewMessageGroup}component="span" >
+                    Confirm
+                </Button>
+                <Button variant="outlined" onClick={()=>{
+                    this.setState({dialogDisplay:'messages'})
                 }} component="span" >
                     Cancel
                 </Button>
@@ -415,14 +479,18 @@ class Generate extends React.Component {
             .then((response)=>{
                 if(response.data.affectedRows>=0) {
                     this.handleClose();
+                } else if(response.data) {
+                    if(response.data[0][0].Title) {
+                        alert(`Message Collection named ${response.data[0][0].Title} already Exists. Try another name`);
+                    } else {
+                        alert(`unhandled exception 423`)
+                    }
                 } else {
-                    alert('Failed to Save Messages');
-                    this.handleClose();
+                    alert(`unhandled exception 427`)
                 }
             })
             .catch(function(error){
                 alert('Failed to Save Messages');
-                this.handleClose();
             }) 
         }
     }
@@ -436,9 +504,22 @@ class Generate extends React.Component {
         <DialogTitle id="form-dialog-title">Save Messages</DialogTitle>
         <DialogContent>
             <DialogContentText>
+                
+                <Select style={{width:228}}
+                    input={<OutlinedInput name="age" id="outlined-age-simple" />}
+                    value={this.state.currentMessageGroup}
+                    onChange={this.handleChangeCurrentMessageGroup}
+                >
+                    {this.state.messageGroups.map((messageGroup)=>{
+                        return(<MenuItem value={messageGroup.ID}>{unescape(messageGroup.Title)}</MenuItem>)
+                    })}
+                </Select>
+                <IconButton aria-label="add" onClick={this.setNewMessageGroup}>
+                    <AddIcon />
+                </IconButton>
                 <TextField
                     id="templateName"
-                    label="Message Group Name"
+                    label="Message Collection Name"
                     type="text"
                     name="templateName"
                     autoComplete="templateName"
@@ -463,6 +544,10 @@ class Generate extends React.Component {
 
     handleChangeCurrentTemplateGroup=(e)=>{
         this.setState({currentTemplateGroup:e.target.value})
+    }
+
+    handleChangeCurrentMessageGroup=(e)=>{
+        this.setState({currentMessageGroup:e.target.value})
     }
 
     renderSaveAsTemplate=()=>{
@@ -583,6 +668,10 @@ class Generate extends React.Component {
         this.setState({dialogDisplay:'new_template_group'})
     }
 
+    setNewMessageGroup=()=>{
+        this.setState({dialogDisplay:'new_message_group'})
+    }
+
     setUpdateTemplate=()=>{
         this.renderTemplates()
         this.setState({dialogDisplay:'duplicate_template'})
@@ -701,6 +790,7 @@ class Generate extends React.Component {
             {/* {this.state.dialogDisplay === 'update' && this.renderUpdateTemplate()} */}
             {this.state.dialogDisplay === 'duplicate_template' && this.renderDialogTemplateSaveorUpdate()}
             {this.state.dialogDisplay === 'new_template_group' && this.renderNewTemplateGroup()}
+            {this.state.dialogDisplay === 'new_message_group' && this.renderNewMessageGroup()}
             {/* renderNewTemplateGroup */}
             {/* subject,value,host,update=true */}
         </Dialog>
