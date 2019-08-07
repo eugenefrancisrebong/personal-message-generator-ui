@@ -1,6 +1,6 @@
 import React from 'react';
-import { Container,Card,Grid,Box,TextField,CardActions,Button,Dialog,DialogTitle,
-    DialogActions,DialogContent,DialogContentText,Fab, CardContent,CardHeader,
+import { Container,Card,Grid,Box,TextField,CardActions,Button,Dialog,DialogTitle,Collapse,
+    DialogActions,DialogContent,DialogContentText,Fab, CardContent,CardHeader,Select,OutlinedInput,MenuItem,IconButton,ListSubheader,
     ButtonGroup,List,ListItem,ListItemIcon,ListItemText} from '@material-ui/core';
 import KeyboardArrowLeft from '@material-ui/icons/KeyboardArrowLeft';
 import NavigateBefore from '@material-ui/icons/NavigateBefore';
@@ -14,6 +14,9 @@ import 'react-quill/dist/quill.snow.css';
 import 'quill-emoji/dist/quill-emoji.css';
 import { /*EmojiBlot, ShortNameEmoji, ToolbarEmoji, TextAreaEmoji , */emojiList} from 'quill-emoji'
 import InboxIcon from '@material-ui/icons/Inbox';
+import AddIcon from '@material-ui/icons/Add';
+import ExpandLess from '@material-ui/icons/ExpandLess';
+import ExpandMore from '@material-ui/icons/ExpandMore';
 import axios from 'axios';
 
 var Block = Quill.import('blots/block');
@@ -48,7 +51,11 @@ class Generate extends React.Component {
       selectedUpdateTemplate:'',
       templateList:[],
       uploadedCSV:undefined,
-      messageName:''
+      messageName:'',
+      templateGroups:[],
+      currentTemplateGroup:0,
+      currentTemplateGroupName:'',
+      templateGroupDrawers:{}
   };
 
   modules = {
@@ -213,13 +220,22 @@ class Generate extends React.Component {
         this.setState({encoding:'whatsapp'})
     }
 
+    getTemplateGroups= async ()=>{
+        let groups = await axios.get(`${process.env.REACT_APP_API_URL}templates/groups/`);
+        this.setState({templateGroups:groups.data});
+        // this.setState({preview:unescape(data[0].Content)})
+        // this.handleClose();
+    }
+
     handleSaveAsTemplate=()=>{
+        this.getTemplateGroups();
         this.setState({dialogDisplay:'save'})
         this.handleOpen();
     }
 
     handleSelectTemplate=()=>{
-        this.renderTemplates()
+        this.renderTemplates();
+        this.getTemplateGroups();
         this.setState({dialogDisplay:'select'})
         this.handleOpen();
     }
@@ -244,25 +260,107 @@ class Generate extends React.Component {
         this.handleClose();
     }
 
-    handleRequestUpdateTemplate=(e)=> {
+    handleRequestUpdateTemplate=async (e)=> {
         if(this.state.preview!=="") {
-            axios.post(`${process.env.REACT_APP_API_URL}templates/update/${this.state.selectedUpdateTemplate}`,{content:this.state.preview,commitby:this.props.userData.ID})
-            .then((response)=>{
-              if(response.data) {
-                  if(response.data.code==='ER_DUP_ENTRY') {
-                  } else {
-                    this.handleClose();
-                    this.setState({templateName:''})
-                  }
-              }
+            const template=this.state.templateList.filter((template)=>{
+                return template.Title===escape(this.state.templateName)
             })
-            .catch(function(error){
-                console.log(error)
-            }) 
+            if(template) {
+                axios.post(`${process.env.REACT_APP_API_URL}templates/update/${template[0].ID}`,{content:this.state.preview,commitby:this.props.userData.ID})
+                .then((response)=>{
+                  if(response.data) {
+                        this.handleClose();
+                        this.setState({templateName:''})
+                  }
+                })
+                .catch(function(error){
+                    console.log(error)
+                }) 
+            } else {
+                alert('Error Selecting Template')
+            }         
         } else {
             alert('empty content')
             this.handleClose();
         }
+    }
+
+    handleRequestNewTemplateGroup=async (e)=> {
+        axios.post(`${process.env.REACT_APP_API_URL}templates/groups/create/`,{title:this.state.currentTemplateGroupName,commitby:this.props.userData.ID})
+        .then((response)=>{
+            if(response.data) {
+                if(response.data) {
+                    console.log(response.data);
+                    if(response.data[0]){
+                        alert('Template already Exists. Try another name')
+                    }else if(response.data.affectedRows>=0) {
+                        this.handleClose();
+                        this.setState({templateName:''})
+                      } else {
+                          this.handleClose();
+                    }
+                }
+            }
+        })
+        .catch(function(error){
+            console.log(error)
+        }) 
+    }
+
+    updateCurrentTemplateGroupName = (e) =>{
+        this.setState({currentTemplateGroupName:e.target.value})
+    }
+
+
+    renderNewTemplateGroup=()=>{
+        return (<>
+            <DialogTitle id="form-dialog-title">Create New Template Group</DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                    <TextField
+                        id="templateName"
+                        label="Template Group Name"
+                        type="text"
+                        name="templateName"
+                        autoComplete="templateName"
+                        margin="normal"
+                        variant="outlined"
+                        value={this.state.currentTemplateGroupName}
+                        fullWidth
+                        onChange={this.updateCurrentTemplateGroupName}
+                    />
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button variant="outlined" onClick={this.handleRequestNewTemplateGroup}component="span" >
+                    Confirm
+                </Button>
+                <Button variant="outlined" onClick={()=>{
+                    this.setState({dialogDisplay:'save'})
+                }} component="span" >
+                    Cancel
+                </Button>
+            </DialogActions>
+            </>)
+    }
+
+    renderDialogTemplateSaveorUpdate=()=>{
+        return (<>
+            <DialogTitle id="form-dialog-title">Template Already Exists</DialogTitle>
+            <DialogContent>
+                <DialogContentText>
+                    <strong>{this.state.currentTemplateGroupName} > {this.state.templateName}</strong> already Exists. Would you like to Update instead?
+                </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+                <Button variant="outlined" onClick={this.handleRequestUpdateTemplate}component="span" >
+                    Confirm
+                </Button>
+                <Button variant="outlined" onClick={this.handleClose} component="span" >
+                    Cancel
+                </Button>
+            </DialogActions>
+            </>)
     }
 
     handleRequestSaveTemplate=(e)=>{
@@ -270,15 +368,21 @@ class Generate extends React.Component {
             alert('Please Add Template Name')
         } else if (this.state.preview.trim()==='') {
             alert('Template is Empty')
+        } else if (this.state.currentTemplateGroup==='') {
+            alert('Select Template Group')
         } else {
-            axios.post(`${process.env.REACT_APP_API_URL}templates/create`,{title:this.state.templateName,content:this.state.preview,commitby:this.props.userData.ID})
+            axios.post(`${process.env.REACT_APP_API_URL}templates/create`,{title:this.state.templateName,content:this.state.preview,groupid:this.state.currentTemplateGroup,commitby:this.props.userData.ID})
             .then((response)=>{
               if(response.data) {
-                  if(response.data.code==='ER_DUP_ENTRY' || response.data.code==='ER_PARSE_ERROR') {
-                    alert('Unable to Save to Database. Contact Administrator')
-                  } else {
-                    this.handleClose();
-                    this.setState({templateName:''})
+                  console.log(response.data);
+                  if(response.data[0]){
+                        this.setState({currentTemplateGroupName:response.data[0].Title})
+                        this.setUpdateTemplate()
+                  }else if(response.data.affectedRows>=0) {
+                      this.handleClose();
+                      this.setState({templateName:''})
+                    } else {
+                        this.handleClose();
                   }
               }
             })
@@ -321,13 +425,6 @@ class Generate extends React.Component {
                 this.handleClose();
             }) 
         }
-        // axios.post(`${process.env.REACT_APP_API_URL}messages/save`,{title:this.state.messageName,content:this.state.preview,csvfile:this.state.uploadedCSV,commitby:this.props.userData.ID})
-        // .then((response)=>{
-        //     console.log(response);
-        // })
-        // .catch(function(error){
-        //     console.log(error);
-        // }) 
     }
 
     updateSaveMessageName=(e) =>{
@@ -364,11 +461,27 @@ class Generate extends React.Component {
         </>)
     }
 
+    handleChangeCurrentTemplateGroup=(e)=>{
+        this.setState({currentTemplateGroup:e.target.value})
+    }
+
     renderSaveAsTemplate=()=>{
         return (<>
         <DialogTitle id="form-dialog-title">Save Template</DialogTitle>
         <DialogContent>
             <DialogContentText>
+                <Select style={{width:228}}
+                input={<OutlinedInput name="age" id="outlined-age-simple" />}
+                value={this.state.currentTemplateGroup}
+                onChange={this.handleChangeCurrentTemplateGroup}
+                >
+                    {this.state.templateGroups.map((templateGroup)=>{
+                        return(<MenuItem value={templateGroup.ID}>{templateGroup.Title}</MenuItem>)
+                    })}
+                </Select>
+                <IconButton aria-label="add" onClick={this.setNewTemplateGroup} >
+                    <AddIcon />
+                </IconButton>
                 <TextField
                     id="templateName"
                     label="Template Name"
@@ -387,9 +500,6 @@ class Generate extends React.Component {
             <Button variant="outlined" component="span" onClick={this.handleRequestSaveTemplate}>
                 Confirm
             </Button>
-            <Button variant="outlined" onClick={this.setUpdateTemplate}component="span" >
-                Update Template
-            </Button>
             <Button variant="outlined" onClick={this.handleClose} component="span" >
                 Cancel
             </Button>
@@ -401,64 +511,62 @@ class Generate extends React.Component {
         let templates = await axios.get(`${process.env.REACT_APP_API_URL}templates/search`);
         const data = templates.data
         this.setState({templateList:data})
+        return data;
     }
 
-    renderUpdateTemplate=()=>{
-        const templates =this.state.templateList; 
-        return (<>
-            <DialogTitle id="form-dialog-title">Update Template</DialogTitle>
-            <DialogContent>
-                <DialogContentText>
-                    <List component="nav">
-                        {templates.map((template)=>{
-                        return (<ListItem
-                        button
-                        key={template.ID}
-                        onClick={()=>{this.handleSetUpdateTemplate(template.ID)}}
-                        selected={this.state.selectedUpdateTemplate===template.ID}
-                        >
-                        <ListItemIcon>
-                            <InboxIcon />
-                        </ListItemIcon>
-                        <ListItemText primary={unescape(template.Title)} />
-                        </ListItem>)
-                        })}
-                    </List>
-                </DialogContentText>
-            </DialogContent>
-            <DialogActions>
-                <Button variant="outlined" onClick={this.handleRequestUpdateTemplate} component="span" >
-                    Confirm
-                </Button>
-                <Button variant="outlined" onClick={this.setSaveTemplate} component="span" >
-                    Save as Template
-                </Button>
-                <Button variant="outlined" onClick={this.handleClose} component="span" >
-                    Cancel
-                </Button>
-            </DialogActions>
-        </>)
+    toggleTemplateGroupDrawer=(val,key)=>{
+        let templateDrawers = this.state.templateGroupDrawers
+        templateDrawers[val]=!key;
+        this.setState({templateDrawers:templateDrawers}); 
     }
+
 
     renderSelectTemplate=()=>{
         const templates =this.state.templateList; 
+        const templateGroups = this.state.templateGroups;
+        let templateGroupNames = templateGroups.map((templateGroup)=>templateGroup.Title) 
+        let templateStatusState={}
+        templateGroupNames.forEach((val,key)=>{
+            templateStatusState[val]=false;
+        });
         return (<>
             <DialogTitle id="form-dialog-title">Select Template</DialogTitle>
             <DialogContent>
                 <DialogContentText>
-                    <List component="nav">
-                        {templates.map((template)=>{
-                        return (<ListItem
-                        button
-                        key={template.ID}
-                        onClick={()=>{this.handleSelectCurrentTemplate(template.ID)}}
-                        selected={this.state.selectedUpdateTemplate===template.ID}
-                        >
-                        <ListItemIcon>
-                            <InboxIcon />
-                        </ListItemIcon>
-                        <ListItemText primary={unescape(template.Title)} />
-                        </ListItem>)
+                    <List
+                    component="nav"
+                    aria-labelledby="nested-list-subheader"
+                    >
+                        {templateGroups.map((templateGroup)=>{
+                            
+                            const groupTemplates = templates.filter((template)=>{
+                                return (template.GroupID===templateGroup.ID)
+                            })
+                            return(<>
+                            <ListItem button 
+                                onClick={()=>{this.toggleTemplateGroupDrawer(templateGroup.Title,this.state.templateGroupDrawers[templateGroup.Title])}}
+                            >
+                                <ListItemIcon>
+                                <InboxIcon />
+                                </ListItemIcon>
+                                <ListItemText primary={templateGroup.Title} />
+                                {groupTemplates.length>0 && (this.state.templateGroupDrawers[templateGroup.Title] ? <ExpandLess /> : <ExpandMore />) }
+                            </ListItem>
+                            {groupTemplates.length>0 && <Collapse in={this.state.templateGroupDrawers[templateGroup.Title]} timeout="auto" unmountOnExit>
+                                <List component="div" disablePadding>
+                                    {groupTemplates.map((groupTemplate)=>{
+                                        return (<ListItem button className="nested"
+                                                    onClick={()=>{this.handleSelectCurrentTemplate(groupTemplate.ID)}}
+                                                >
+                                                    <ListItemIcon>
+                                                        <InboxIcon />
+                                                    </ListItemIcon>
+                                                    <ListItemText primary={unescape(groupTemplate.Title)} />
+                                                </ListItem>)
+                                    })}
+                                </List>
+                            </Collapse>}
+                            </>)
                         })}
                     </List>
                 </DialogContentText>
@@ -471,9 +579,13 @@ class Generate extends React.Component {
         </>)
     }
 
+    setNewTemplateGroup=()=>{
+        this.setState({dialogDisplay:'new_template_group'})
+    }
+
     setUpdateTemplate=()=>{
         this.renderTemplates()
-        this.setState({dialogDisplay:'update'})
+        this.setState({dialogDisplay:'duplicate_template'})
     }
 
     setSelectTemplate=()=>{
@@ -586,7 +698,11 @@ class Generate extends React.Component {
             {this.state.dialogDisplay === 'select' && this.renderSelectTemplate()}
             {this.state.dialogDisplay === 'messages' && this.renderSaveMessages()}
             {this.state.dialogDisplay === 'save' && this.renderSaveAsTemplate()}
-            {this.state.dialogDisplay === 'update' && this.renderUpdateTemplate()}
+            {/* {this.state.dialogDisplay === 'update' && this.renderUpdateTemplate()} */}
+            {this.state.dialogDisplay === 'duplicate_template' && this.renderDialogTemplateSaveorUpdate()}
+            {this.state.dialogDisplay === 'new_template_group' && this.renderNewTemplateGroup()}
+            {/* renderNewTemplateGroup */}
+            {/* subject,value,host,update=true */}
         </Dialog>
     </Container>);
   }
