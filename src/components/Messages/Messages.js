@@ -1,10 +1,12 @@
 import React from 'react';
 import { Container,Card,Grid,Box,TextField,CardActions,Button,Dialog,DialogTitle,
-    DialogActions,DialogContent,DialogContentText,Fab, CardContent,CardHeader,ListItemSecondaryAction,
+    DialogActions,DialogContent,DialogContentText,Fab, CardContent,CardHeader,ListItemSecondaryAction,Collapse,
     ButtonGroup,List,ListItem,ListItemIcon,ListItemText,IconButton } from '@material-ui/core';
 import KeyboardArrowLeft from '@material-ui/icons/KeyboardArrowLeft';
 import InboxIcon from '@material-ui/icons/Inbox';
 import NavigateBefore from '@material-ui/icons/NavigateBefore';
+import ExpandLess from '@material-ui/icons/ExpandLess';
+import ExpandMore from '@material-ui/icons/ExpandMore';
 import NavigateNext from '@material-ui/icons/NavigateNext';
 import DeleteIcon from '@material-ui/icons/Delete';
 import axios from 'axios';
@@ -13,12 +15,15 @@ import { withRouter } from "react-router-dom";
 class Messages extends React.Component {
   state = {
       messageGroups:[],
+      messages:[],
       currentContent:'',
       currentData:[],
+      processedData:[],
       currentDone:[],
       currentHeaders:[],
       currentSelectedData:1,
-      encoding:'normal'
+      encoding:'normal',
+      drawerStatus:{}
   };
 
 
@@ -30,10 +35,18 @@ class Messages extends React.Component {
   }
 
   componentDidMount() {
-      axios.get(`${process.env.REACT_APP_API_URL}messages/groups`)
-      .then((res)=>{
-          this.setState({messageGroups:res.data})
-      })
+        axios.get(`${process.env.REACT_APP_API_URL}messages/groups`)
+        .then((res)=>{
+            let drawerStatus={}
+            res.data.forEach((data)=>{
+                drawerStatus[data.Title]=false;
+            })
+            this.setState({messageGroups:res.data,drawerStatus})
+        })
+        axios.get(`${process.env.REACT_APP_API_URL}messages/get/`)
+        .then((res)=>{
+            this.setState({messages:res.data})
+        })
   }
 
   updateCurrentMessageGroupData= (id)=>{
@@ -139,6 +152,9 @@ class Messages extends React.Component {
   render = () => {
     let content = unescape(this.state.currentContent);    
     const currentValues =this.state.currentData[this.state.currentSelectedData-1];
+    // this.state.currentData.map((data,key)=>{
+    //     return({key,data})
+    // })
     this.state.currentHeaders.forEach((val,key)=>{
         var re = new RegExp("\\["+val+"\\]", 'g');
         content=content.replace(re,currentValues.split(',')[key]);
@@ -171,30 +187,48 @@ class Messages extends React.Component {
             <Grid item xs={4}>
                 <Card>
                     <CardContent>
-                        <h1>Message Groups</h1>                    
+                        <h1>Messages</h1>                    
                         <List component="nav">
-                            {
-                                this.state.messageGroups.map((messageGroup)=>{
-                                    console.log(unescape(messageGroup.Title))
-                                    return(
-                                        <ListItem
-                                        button
-                                        key={messageGroup.ID}
-                                        onClick={()=>{this.updateCurrentMessageGroupData(messageGroup.ID)}}
-                                        >
+                            {this.state.messageGroups.map((messageGroup)=>{
+                                const messages = this.state.messages.filter(message=>message.GroupID===messageGroup.ID);
+                                const hasMessages = messages.length>0 ? true:false;
+                                const expanded = this.state.drawerStatus[messageGroup.Title];
+                                return(<>
+                                    <ListItem button
+                                        onClick={()=>{
+                                            if(hasMessages){
+                                                let tempDrawerStatus = this.state.drawerStatus;
+                                                tempDrawerStatus[messageGroup.Title]=!expanded
+                                                this.setState({drawerStatus:tempDrawerStatus});
+                                            }
+                                        }}
+                                    >
                                         <ListItemIcon>
-                                            <InboxIcon />
+                                        <InboxIcon />
                                         </ListItemIcon>
                                         <ListItemText primary={unescape(messageGroup.Title)} />
-                                        <ListItemSecondaryAction>
-                                            <IconButton edge="end" aria-label="delete" onClick={()=>{this.deleteCurrentMessageGroup(messageGroup.ID)}}>
-                                            <DeleteIcon />
-                                            </IconButton>
-                                        </ListItemSecondaryAction>
-                                        </ListItem>
-                                    )
-                                })
-                            }
+                                        {hasMessages && (expanded ? <ExpandLess /> : <ExpandMore />)}
+                                    </ListItem>
+                                    {hasMessages && <Collapse in={expanded} timeout="auto" unmountOnExit>
+                                        <List component="div" disablePadding>
+                                            {messages.map((message)=>{
+                                                return(<ListItem button  className="nested"
+                                                onClick={()=>{this.updateCurrentMessageGroupData(message.ID)}}
+                                                >
+                                                    <ListItemIcon>
+                                                    <InboxIcon />
+                                                    </ListItemIcon>
+                                                    <ListItemText primary={unescape(message.Title)} />
+                                                    <IconButton edge="end" aria-label="delete" onClick={()=>{this.deleteCurrentMessageGroup(messageGroup.ID)}}>
+                                                    <DeleteIcon />
+                                                    </IconButton>
+                                                </ListItem>)
+                                            })}
+                                    </List>
+                                    </Collapse>
+                                    }
+                                </>)
+                            })}
                         </List>
                     </CardContent>
                     <CardActions>
@@ -206,7 +240,7 @@ class Messages extends React.Component {
                     <CardContent>
                         <h1>Messages</h1>                    
                         <Grid container spacing={3}>
-                            <Grid item xs={12}>
+                            <Grid item xs={10}>
                                 <div id="copyToClipboard" className={'ql-editor'} dangerouslySetInnerHTML={{__html:content}}>
                                 </div>
                                 <div>
@@ -227,6 +261,22 @@ class Messages extends React.Component {
                                 </div>
                                 <div>
                                 </div>
+                            </Grid>
+                            <Grid item xs={1}>
+                                <List>
+                                    <ListItem
+                                    button
+                                    >
+                                        {
+                                            // console.log(this.state.currentDone)
+                                            console.log(
+                                            )
+                                        }
+                                        <ListItemText primary="" />
+                                        <ListItemSecondaryAction>
+                                        </ListItemSecondaryAction>
+                                    </ListItem>
+                                </List>
                             </Grid>
                         </Grid>
                     </CardContent>
