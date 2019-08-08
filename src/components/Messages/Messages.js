@@ -23,7 +23,9 @@ class Messages extends React.Component {
       currentHeaders:[],
       currentSelectedData:1,
       encoding:'normal',
-      drawerStatus:{}
+      drawerStatus:{},
+      currentMessageCollection:null,
+      hideSent:true,
   };
 
 
@@ -52,10 +54,17 @@ class Messages extends React.Component {
   updateCurrentMessageGroupData= (id)=>{
     axios.get(`${process.env.REACT_APP_API_URL}messages/get/${id}`)
     .then((res)=>{
-        const {Content,Data,SentData} = res.data[0];
+        const {Content,Data,SentData,Title} = res.data[0];
         let DataArray = unescape(Data).split("\n");
         const Headers = DataArray.shift();
-        this.setState({currentContent:unescape(Content),currentData:DataArray,currentDone:unescape(SentData),currentHeaders:Headers.split(',')})
+        this.setState({currentMessageCollection:id,currentTitle:unescape(Title),currentContent:unescape(Content),currentData:DataArray,currentDone:JSON.parse(unescape(SentData)),currentHeaders:Headers.split(','),currentSelectedData:1})
+        if(this.state.hideSent) {
+            let selectedData = this.state.currentSelectedData;
+            while(this.state.currentDone.includes(selectedData)) {
+                selectedData++
+            }
+            this.setState({currentSelectedData:selectedData})
+        }
     })
   }
 
@@ -76,13 +85,33 @@ class Messages extends React.Component {
     }
     handleNextPreview=()=>{
         if(this.state.currentSelectedData>0 && this.state.currentSelectedData!==this.state.currentData.length+1) {
-            this.setState({currentSelectedData:this.state.currentSelectedData+1})
+            if(this.state.hideSent) {
+                let newSelectedData = this.state.currentSelectedData+1;
+                while(this.state.currentDone.includes(newSelectedData)) {
+                    newSelectedData++
+                }
+                if(newSelectedData<this.state.currentData.length) {
+                    this.setState({currentSelectedData:newSelectedData})
+                }
+            } else {
+                this.setState({currentSelectedData:this.state.currentSelectedData+1})
+            }
         }
     }
   
     handlePreviousPreview=()=>{
       if(this.state.currentSelectedData>1 && this.state.currentSelectedData!==this.state.currentData.length+1) {
-          this.setState({currentSelectedData:this.state.currentSelectedData-1})
+        if(this.state.hideSent) {
+            let newSelectedData = this.state.currentSelectedData-1;
+            while(this.state.currentDone.includes(newSelectedData)) {
+                newSelectedData--
+            }
+            if(!newSelectedData<1) {
+                this.setState({currentSelectedData:newSelectedData})
+            }
+        } else {
+            this.setState({currentSelectedData:this.state.currentSelectedData-1})
+        }
       }
     }
 
@@ -148,6 +177,39 @@ class Messages extends React.Component {
             }
         }
     }
+    
+    toggleSent=()=>{
+        if(this.state.currentMessageCollection) {
+            let values = this.state.currentDone;
+            if(!values.includes(this.state.currentSelectedData)) {
+                values.push(this.state.currentSelectedData);
+            } else {
+                values=values.filter(value=>value!==this.state.currentSelectedData)
+            }
+            this.setState({currentDone:values});
+            const sentData = escape(JSON.stringify(values));
+            axios.post(`${process.env.REACT_APP_API_URL}messages/sentstatus/${this.state.currentMessageCollection}`,{SentData:sentData,commitby:this.props.userData.ID})
+            .then((response)=>{
+              if(response.data) {
+                    this.handleClose();
+                    this.setState({templateName:''})
+              }
+            })
+            .catch(function(error){
+                console.log(error)
+            }) 
+            // sentstatus
+        }
+    }
+
+    checkValueIfSent=()=>{
+        const {currentSelectedData,currentDone} = this.state;
+        return currentDone.includes(currentSelectedData)
+    }
+
+    setDisplaySent=()=>{
+        this.setState({hideSent:!this.state.hideSent})
+    }
 
   render = () => {
     let content = unescape(this.state.currentContent);    
@@ -184,7 +246,7 @@ class Messages extends React.Component {
         <br/>
         <br/>
         <Grid container spacing={3}>
-            <Grid item xs={4}>
+            <Grid item xs={3}>
                 <Card>
                     <CardContent>
                         <h1>Messages</h1>                    
@@ -235,10 +297,10 @@ class Messages extends React.Component {
                     </CardActions>
                 </Card>
             </Grid>
-            <Grid item xs={8}>
+            <Grid item xs={9}>
                 <Card>
                     <CardContent>
-                        <h1>Messages</h1>                    
+                        <h1>{this.state.currentTitle}</h1>                    
                         <Grid container spacing={3}>
                             <Grid item xs={10}>
                                 <div id="copyToClipboard" className={'ql-editor'} dangerouslySetInnerHTML={{__html:content}}>
@@ -262,21 +324,20 @@ class Messages extends React.Component {
                                 <div>
                                 </div>
                             </Grid>
-                            <Grid item xs={1}>
-                                <List>
-                                    <ListItem
-                                    button
-                                    >
-                                        {
-                                            // console.log(this.state.currentDone)
-                                            console.log(
-                                            )
-                                        }
-                                        <ListItemText primary="" />
-                                        <ListItemSecondaryAction>
-                                        </ListItemSecondaryAction>
-                                    </ListItem>
-                                </List>
+                            <Grid item xs={2}>
+                                <Grid container>
+                                    <Grid item xs={12}>
+                                        <Button onClick={this.toggleSent}>{!this.checkValueIfSent() && `Mark as `}Sent</Button>
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        <ButtonGroup size="small" aria-label="small outlined button group">
+                                            <Button onClick={this.setDisplaySent}>{this.state.hideSent ? `Display`:`Hide`} Sent</Button>
+                                        </ButtonGroup>
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        Sent: {this.state.currentDone.length}/{this.state.currentData.length}
+                                    </Grid>
+                                </Grid>
                             </Grid>
                         </Grid>
                     </CardContent>
