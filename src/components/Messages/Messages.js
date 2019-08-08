@@ -283,9 +283,11 @@ class Messages extends React.Component {
                                                     <InboxIcon />
                                                     </ListItemIcon>
                                                     <ListItemText primary={unescape(message.Title)} />
-                                                    <IconButton edge="end" aria-label="delete" onClick={()=>{this.deleteCurrentMessageGroup(message.ID)}}>
-                                                    <DeleteIcon />
-                                                    </IconButton>
+                                                    <ListItemSecondaryAction>
+                                                        <IconButton edge="end" aria-label="delete" onClick={()=>{this.deleteCurrentMessageGroup(message.ID)}}>
+                                                        <DeleteIcon />
+                                                        </IconButton>
+                                                    </ListItemSecondaryAction>
                                                 </ListItem>)
                                             })}
                                     </List>
