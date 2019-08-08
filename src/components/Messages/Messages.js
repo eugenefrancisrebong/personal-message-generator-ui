@@ -213,6 +213,9 @@ class Messages extends React.Component {
         this.setState({hideSent:!this.state.hideSent})
     }
 
+    openGenerate=()=>{
+        this.props.history.push('/generate')
+    }
   render = () => {
     let content = unescape(this.state.currentContent);    
     const currentValues =this.state.currentData[this.state.currentSelectedData-1];
@@ -240,6 +243,7 @@ class Messages extends React.Component {
     }
 
 
+
     return (<Container>
         <Fab size="small" color="primary" aria-label="back" onClick={this.handleBack}>
             <KeyboardArrowLeft/>
@@ -251,7 +255,10 @@ class Messages extends React.Component {
             <Grid item xs={3}>
                 <Card>
                     <CardContent>
-                        <h1>Messages</h1>                    
+                        <h1>Messages</h1>  
+                        <Button variant="outlined" onClick={this.openGenerate}component="span" >
+                            Create New Messages
+                        </Button>                                
                         <List component="nav">
                             {this.state.messageGroups.map((messageGroup)=>{
                                 const messages = this.state.messages.filter(message=>message.GroupID===messageGroup.ID);

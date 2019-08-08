@@ -59,6 +59,9 @@ class RootComponent extends React.Component {
       this.props.history.push('/home')
   }
 
+  openGenerate=()=>{
+      this.props.history.push('/generate')
+  }
 
   render = () => {
       const content = ''
@@ -75,14 +78,16 @@ class RootComponent extends React.Component {
             <Grid item xs={4}>
                 <Card>
                     <CardContent>
-                        <h1>Templates</h1>                    
+                        <h1>Templates</h1>      
+                        <Button variant="outlined" onClick={this.openGenerate}component="span" >
+                            Create New Template
+                        </Button>              
                         <List component="nav">
                             { this.state.templateGroups.map((templateGroup)=>{
                                 const templates = this.state.templates.filter((template)=>{
                                     return (template.GroupID===templateGroup.ID)
                                 })
                                 const hasChildren = templates.length>0 ? true:false;
-                                console.log(templates)
                                 return(<>
                                     <List component="nav">
                                     <ListItem button onClick={this.handleClick}>
