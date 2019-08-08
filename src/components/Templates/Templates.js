@@ -16,6 +16,7 @@ class RootComponent extends React.Component {
       templateGroups:[],
       templates:[],
       currentTemplate:{},
+      drawerState:{}
   };
 
   componentWillMount() {
@@ -32,6 +33,9 @@ class RootComponent extends React.Component {
     axios.get(`${process.env.REACT_APP_API_URL}templates/groups`)
     .then((res)=>{
         this.setState({templateGroups:res.data})
+        let drawerState={}
+        res.data.forEach(((item)=>{drawerState[item.Title]=false}))
+        this.setState({drawerState})
     })
   }
 
@@ -63,6 +67,12 @@ class RootComponent extends React.Component {
       this.props.history.push('/generate')
   }
 
+  toggleDrawerState=(title)=>{
+      let drawerState=this.state.drawerState;
+      drawerState[title]=!drawerState[title]
+        this.setState(drawerState)
+  }
+
   render = () => {
       const content = ''
       const {templates,templateGroups} = this.state
@@ -90,15 +100,15 @@ class RootComponent extends React.Component {
                                 const hasChildren = templates.length>0 ? true:false;
                                 return(<>
                                     <List component="nav">
-                                    <ListItem button onClick={this.handleClick}>
+                                    <ListItem button onClick={()=>{this.toggleDrawerState(templateGroup.Title)}}>
                                       <ListItemIcon>
                                         <InboxIcon />
                                       </ListItemIcon>
                                       <ListItemText primary={unescape(templateGroup.Title)} />
-                                      {hasChildren && (true ? <ExpandLess /> : <ExpandMore />)}
+                                      {hasChildren && (this.state.drawerState[templateGroup.Title] ? <ExpandLess /> : <ExpandMore />)}
                                     </ListItem>
                                     {hasChildren && 
-                                    <Collapse in={true} timeout="auto" className='nested' unmountOnExit>
+                                    <Collapse in={this.state.drawerState[templateGroup.Title]} timeout="auto" className='nested' unmountOnExit>
                                       <List component="div" disablePadding>
                                           {templates.map((template)=>{
                                               return(<ListItem button
