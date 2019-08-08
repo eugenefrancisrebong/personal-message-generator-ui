@@ -17,6 +17,7 @@ import InboxIcon from '@material-ui/icons/Inbox';
 import AddIcon from '@material-ui/icons/Add';
 import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
+import {DropzoneArea} from 'material-ui-dropzone'
 import axios from 'axios';import queryString from 'query-string';
 
 
@@ -171,13 +172,16 @@ class Generate extends React.Component {
 
   onUploadCSV=(e)=>{
     const reader = new FileReader();
-    let file = e.target.files[0];
-    this.setState({uploadedCSV:file})
-    reader.onload = (event) => {
-        const text = event.target.result;
-        this.parseCSV(text);
+    console.log(e)
+    let file = e[0];
+    if(file) {
+        this.setState({uploadedCSV:file})
+        reader.onload = (event) => {
+            const text = event.target.result;
+            this.parseCSV(text);
+        }
+        reader.readAsText(file);
     }
-    reader.readAsText(file);
   }
 
   parseCSV(text){
@@ -721,11 +725,23 @@ class Generate extends React.Component {
                 <Card>
                     <CardContent>
                         <h1>Shortcodes</h1>
+                        
+                        <DropzoneArea 
+                            dropzoneText={`Drop CSV File here or Click to Upload`}
+                            acceptedFiles={['text/csv','application/vnd.ms-excel']}
+                            filesLimit={1}
+                            maxFileSize={2000000000}
+                            showFileNamesInPreview={true}
+                            onChange={this.onUploadCSV}
+                            onDelete={function(){return false}}
+                            showPreviewsInDropzone={false}
+                            className={`dropZone`}
+                        />
                         {this.state.columns.length >0 && this.state.columns.map((column,index)=><p key={index}>[{column}]</p>)}
                         {this.state.columns.length === 0 && <span>No Shortcodes yet. Upload Something!</span>}                        
                     </CardContent>
                     <CardActions>
-                        <input
+                        {/* <input
                             accept="*"
                             id="outlined-button-file"
                             multiple
@@ -737,7 +753,7 @@ class Generate extends React.Component {
                             <Button variant="outlined" component="span" >
                             Upload CSV File
                             </Button>
-                        </label>
+                        </label> */}
                     </CardActions>
                 </Card>
             </Grid>
