@@ -52,20 +52,22 @@ class Messages extends React.Component {
   }
 
   updateCurrentMessageGroupData= (id)=>{
-    axios.get(`${process.env.REACT_APP_API_URL}messages/get/${id}`)
-    .then((res)=>{
-        const {Content,Data,SentData,Title} = res.data[0];
-        let DataArray = unescape(Data).split("\n");
-        const Headers = DataArray.shift();
-        this.setState({currentMessageCollection:id,currentTitle:unescape(Title),currentContent:unescape(Content),currentData:DataArray,currentDone:JSON.parse(unescape(SentData)),currentHeaders:Headers.split(','),currentSelectedData:1})
-        if(this.state.hideSent) {
-            let selectedData = this.state.currentSelectedData;
-            while(this.state.currentDone.includes(selectedData)) {
-                selectedData++
+        axios.get(`${process.env.REACT_APP_API_URL}messages/get/${id}`)
+        .then((res)=>{
+            if(res.data[0]) {
+                const {Content,Data,SentData,Title} = res.data[0];
+                let DataArray = unescape(Data).split("\n");
+                const Headers = DataArray.shift();
+                this.setState({currentMessageCollection:id,currentTitle:unescape(Title),currentContent:unescape(Content),currentData:DataArray,currentDone:JSON.parse(unescape(SentData)),currentHeaders:Headers.split(','),currentSelectedData:1})
+                if(this.state.hideSent) {
+                    let selectedData = this.state.currentSelectedData;
+                    while(this.state.currentDone.includes(selectedData)) {
+                        selectedData++
+                    }
+                    this.setState({currentSelectedData:selectedData})
+                }
             }
-            this.setState({currentSelectedData:selectedData})
-        }
-    })
+        })
   }
 
   deleteCurrentMessageGroup=(id)=>{
@@ -74,10 +76,10 @@ class Messages extends React.Component {
           console.log(res);
         })
         .catch((e)=>{console.log(e)})
-        const lists = this.state.messageGroups.filter(x => {
+        const lists = this.state.messages.filter(x => {
         return x.ID !== id;
         })
-        this.setState({messageGroups:lists})
+        this.setState({messages:lists})
   }
 
     handleBack=()=>{
@@ -281,7 +283,7 @@ class Messages extends React.Component {
                                                     <InboxIcon />
                                                     </ListItemIcon>
                                                     <ListItemText primary={unescape(message.Title)} />
-                                                    <IconButton edge="end" aria-label="delete" onClick={()=>{this.deleteCurrentMessageGroup(messageGroup.ID)}}>
+                                                    <IconButton edge="end" aria-label="delete" onClick={()=>{this.deleteCurrentMessageGroup(message.ID)}}>
                                                     <DeleteIcon />
                                                     </IconButton>
                                                 </ListItem>)
