@@ -1,10 +1,12 @@
 import React from 'react';
 import { Container,Card,Grid,Box,TextField,CardActions,Button,Dialog,DialogTitle,
-    DialogActions,DialogContent,DialogContentText,Fab, CardContent,CardHeader,ListItemSecondaryAction,
+    DialogActions,DialogContent,DialogContentText,Fab, CardContent,CardHeader,ListItemSecondaryAction,Collapse,
     ButtonGroup,List,ListItem,ListItemIcon,ListItemText,IconButton } from '@material-ui/core';
 import KeyboardArrowLeft from '@material-ui/icons/KeyboardArrowLeft';
 import InboxIcon from '@material-ui/icons/Inbox';
 import NavigateBefore from '@material-ui/icons/NavigateBefore';
+import ExpandLess from '@material-ui/icons/ExpandLess';
+import ExpandMore from '@material-ui/icons/ExpandMore';
 import NavigateNext from '@material-ui/icons/NavigateNext';
 import DeleteIcon from '@material-ui/icons/Delete';
 import axios from 'axios';
@@ -13,12 +15,17 @@ import { withRouter } from "react-router-dom";
 class Messages extends React.Component {
   state = {
       messageGroups:[],
+      messages:[],
       currentContent:'',
       currentData:[],
+      processedData:[],
       currentDone:[],
       currentHeaders:[],
       currentSelectedData:1,
-      encoding:'normal'
+      encoding:'normal',
+      drawerStatus:{},
+      currentMessageCollection:null,
+      hideSent:true,
   };
 
 
@@ -30,19 +37,34 @@ class Messages extends React.Component {
   }
 
   componentDidMount() {
-      axios.get(`${process.env.REACT_APP_API_URL}messages/groups`)
-      .then((res)=>{
-          this.setState({messageGroups:res.data})
-      })
+        axios.get(`${process.env.REACT_APP_API_URL}messages/groups`)
+        .then((res)=>{
+            let drawerStatus={}
+            res.data.forEach((data)=>{
+                drawerStatus[data.Title]=false;
+            })
+            this.setState({messageGroups:res.data,drawerStatus})
+        })
+        axios.get(`${process.env.REACT_APP_API_URL}messages/get/`)
+        .then((res)=>{
+            this.setState({messages:res.data})
+        })
   }
 
   updateCurrentMessageGroupData= (id)=>{
     axios.get(`${process.env.REACT_APP_API_URL}messages/get/${id}`)
     .then((res)=>{
-        const {Content,Data,SentData} = res.data[0];
+        const {Content,Data,SentData,Title} = res.data[0];
         let DataArray = unescape(Data).split("\n");
         const Headers = DataArray.shift();
-        this.setState({currentContent:unescape(Content),currentData:DataArray,currentDone:unescape(SentData),currentHeaders:Headers.split(',')})
+        this.setState({currentMessageCollection:id,currentTitle:unescape(Title),currentContent:unescape(Content),currentData:DataArray,currentDone:JSON.parse(unescape(SentData)),currentHeaders:Headers.split(','),currentSelectedData:1})
+        if(this.state.hideSent) {
+            let selectedData = this.state.currentSelectedData;
+            while(this.state.currentDone.includes(selectedData)) {
+                selectedData++
+            }
+            this.setState({currentSelectedData:selectedData})
+        }
     })
   }
 
@@ -63,13 +85,33 @@ class Messages extends React.Component {
     }
     handleNextPreview=()=>{
         if(this.state.currentSelectedData>0 && this.state.currentSelectedData!==this.state.currentData.length+1) {
-            this.setState({currentSelectedData:this.state.currentSelectedData+1})
+            if(this.state.hideSent) {
+                let newSelectedData = this.state.currentSelectedData+1;
+                while(this.state.currentDone.includes(newSelectedData)) {
+                    newSelectedData++
+                }
+                if(newSelectedData<this.state.currentData.length) {
+                    this.setState({currentSelectedData:newSelectedData})
+                }
+            } else {
+                this.setState({currentSelectedData:this.state.currentSelectedData+1})
+            }
         }
     }
   
     handlePreviousPreview=()=>{
       if(this.state.currentSelectedData>1 && this.state.currentSelectedData!==this.state.currentData.length+1) {
-          this.setState({currentSelectedData:this.state.currentSelectedData-1})
+        if(this.state.hideSent) {
+            let newSelectedData = this.state.currentSelectedData-1;
+            while(this.state.currentDone.includes(newSelectedData)) {
+                newSelectedData--
+            }
+            if(!newSelectedData<1) {
+                this.setState({currentSelectedData:newSelectedData})
+            }
+        } else {
+            this.setState({currentSelectedData:this.state.currentSelectedData-1})
+        }
       }
     }
 
@@ -135,10 +177,46 @@ class Messages extends React.Component {
             }
         }
     }
+    
+    toggleSent=()=>{
+        if(this.state.currentMessageCollection) {
+            let values = this.state.currentDone;
+            if(!values.includes(this.state.currentSelectedData)) {
+                values.push(this.state.currentSelectedData);
+            } else {
+                values=values.filter(value=>value!==this.state.currentSelectedData)
+            }
+            this.setState({currentDone:values});
+            const sentData = escape(JSON.stringify(values));
+            axios.post(`${process.env.REACT_APP_API_URL}messages/sentstatus/${this.state.currentMessageCollection}`,{SentData:sentData,commitby:this.props.userData.ID})
+            .then((response)=>{
+              if(response.data) {
+                    this.handleClose();
+                    this.setState({templateName:''})
+              }
+            })
+            .catch(function(error){
+                console.log(error)
+            }) 
+            // sentstatus
+        }
+    }
+
+    checkValueIfSent=()=>{
+        const {currentSelectedData,currentDone} = this.state;
+        return currentDone.includes(currentSelectedData)
+    }
+
+    setDisplaySent=()=>{
+        this.setState({hideSent:!this.state.hideSent})
+    }
 
   render = () => {
     let content = unescape(this.state.currentContent);    
     const currentValues =this.state.currentData[this.state.currentSelectedData-1];
+    // this.state.currentData.map((data,key)=>{
+    //     return({key,data})
+    // })
     this.state.currentHeaders.forEach((val,key)=>{
         var re = new RegExp("\\["+val+"\\]", 'g');
         content=content.replace(re,currentValues.split(',')[key]);
@@ -168,45 +246,63 @@ class Messages extends React.Component {
         <br/>
         <br/>
         <Grid container spacing={3}>
-            <Grid item xs={4}>
+            <Grid item xs={3}>
                 <Card>
                     <CardContent>
-                        <h1>Message Groups</h1>                    
+                        <h1>Messages</h1>                    
                         <List component="nav">
-                            {
-                                this.state.messageGroups.map((messageGroup)=>{
-                                    console.log(unescape(messageGroup.Title))
-                                    return(
-                                        <ListItem
-                                        button
-                                        key={messageGroup.ID}
-                                        onClick={()=>{this.updateCurrentMessageGroupData(messageGroup.ID)}}
-                                        >
+                            {this.state.messageGroups.map((messageGroup)=>{
+                                const messages = this.state.messages.filter(message=>message.GroupID===messageGroup.ID);
+                                const hasMessages = messages.length>0 ? true:false;
+                                const expanded = this.state.drawerStatus[messageGroup.Title];
+                                return(<>
+                                    <ListItem button
+                                        onClick={()=>{
+                                            if(hasMessages){
+                                                let tempDrawerStatus = this.state.drawerStatus;
+                                                tempDrawerStatus[messageGroup.Title]=!expanded
+                                                this.setState({drawerStatus:tempDrawerStatus});
+                                            }
+                                        }}
+                                    >
                                         <ListItemIcon>
-                                            <InboxIcon />
+                                        <InboxIcon />
                                         </ListItemIcon>
                                         <ListItemText primary={unescape(messageGroup.Title)} />
-                                        <ListItemSecondaryAction>
-                                            <IconButton edge="end" aria-label="delete" onClick={()=>{this.deleteCurrentMessageGroup(messageGroup.ID)}}>
-                                            <DeleteIcon />
-                                            </IconButton>
-                                        </ListItemSecondaryAction>
-                                        </ListItem>
-                                    )
-                                })
-                            }
+                                        {hasMessages && (expanded ? <ExpandLess /> : <ExpandMore />)}
+                                    </ListItem>
+                                    {hasMessages && <Collapse in={expanded} timeout="auto" unmountOnExit>
+                                        <List component="div" disablePadding>
+                                            {messages.map((message)=>{
+                                                return(<ListItem button  className="nested"
+                                                onClick={()=>{this.updateCurrentMessageGroupData(message.ID)}}
+                                                >
+                                                    <ListItemIcon>
+                                                    <InboxIcon />
+                                                    </ListItemIcon>
+                                                    <ListItemText primary={unescape(message.Title)} />
+                                                    <IconButton edge="end" aria-label="delete" onClick={()=>{this.deleteCurrentMessageGroup(messageGroup.ID)}}>
+                                                    <DeleteIcon />
+                                                    </IconButton>
+                                                </ListItem>)
+                                            })}
+                                    </List>
+                                    </Collapse>
+                                    }
+                                </>)
+                            })}
                         </List>
                     </CardContent>
                     <CardActions>
                     </CardActions>
                 </Card>
             </Grid>
-            <Grid item xs={8}>
+            <Grid item xs={9}>
                 <Card>
                     <CardContent>
-                        <h1>Messages</h1>                    
+                        <h1>{this.state.currentTitle}</h1>                    
                         <Grid container spacing={3}>
-                            <Grid item xs={12}>
+                            <Grid item xs={10}>
                                 <div id="copyToClipboard" className={'ql-editor'} dangerouslySetInnerHTML={{__html:content}}>
                                 </div>
                                 <div>
@@ -227,6 +323,21 @@ class Messages extends React.Component {
                                 </div>
                                 <div>
                                 </div>
+                            </Grid>
+                            <Grid item xs={2}>
+                                <Grid container>
+                                    <Grid item xs={12}>
+                                        <Button onClick={this.toggleSent}>{!this.checkValueIfSent() && `Mark as `}Sent</Button>
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        <ButtonGroup size="small" aria-label="small outlined button group">
+                                            <Button onClick={this.setDisplaySent}>{this.state.hideSent ? `Display`:`Hide`} Sent</Button>
+                                        </ButtonGroup>
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        Sent: {this.state.currentDone.length}/{this.state.currentData.length}
+                                    </Grid>
+                                </Grid>
                             </Grid>
                         </Grid>
                     </CardContent>
