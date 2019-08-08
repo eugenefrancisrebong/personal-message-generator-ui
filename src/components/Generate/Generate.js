@@ -17,7 +17,8 @@ import InboxIcon from '@material-ui/icons/Inbox';
 import AddIcon from '@material-ui/icons/Add';
 import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
-import axios from 'axios';
+import axios from 'axios';import queryString from 'query-string';
+
 
 var Block = Quill.import('blots/block');
 var EmojiBlot = Quill.import('formats/emoji')
@@ -108,8 +109,14 @@ class Generate extends React.Component {
   }
 
   componentWillMount() {
+    console.log(this.props.match.params)
+
       if(!this.props.isLoggedIn) {
         this.props.history.push('/login')
+    }
+    const {editState,editWhat} = this.props.match.params;
+    if(editState==='template') {
+        this.handleSelectCurrentTemplate(editWhat);
     }
   }
   

@@ -87,7 +87,7 @@ class App extends React.Component {
         <Route path="/login" component={this.LoginComponent}></Route>
         <Route path="/home" component={this.MainMenuComponent}></Route>
         <Route path="/users" component={this.UsersComponent}></Route>
-        <Route path="/generate" component={this.GenerateComponent}></Route>
+        <Route path="/generate/:editState?/:editWhat?" component={this.GenerateComponent}></Route>
         <Route path="/messages" component={this.MessagesComponent}></Route>
         <Route path="/templates" component={this.TemplatesComponent}></Route>
       </Router>
