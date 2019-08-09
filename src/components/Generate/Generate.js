@@ -12,13 +12,15 @@ import {stateToHTML} from 'draft-js-export-html';
 import ReactQuill, { Quill } from 'react-quill'; // ES6
 import 'react-quill/dist/quill.snow.css';
 import 'quill-emoji/dist/quill-emoji.css';
+import './reactQuill.css';
 import { /*EmojiBlot, ShortNameEmoji, ToolbarEmoji, TextAreaEmoji , */emojiList} from 'quill-emoji'
 import InboxIcon from '@material-ui/icons/Inbox';
 import AddIcon from '@material-ui/icons/Add';
 import ExpandLess from '@material-ui/icons/ExpandLess';
 import ExpandMore from '@material-ui/icons/ExpandMore';
-import {DropzoneArea} from 'material-ui-dropzone'
-import axios from 'axios';import queryString from 'query-string';
+import Dropzone from './Dropzone.js'
+import axios from 'axios';
+import queryString from 'query-string';
 
 
 var Block = Quill.import('blots/block');
@@ -61,6 +63,7 @@ class Generate extends React.Component {
       messageGroups:[],
       currentMessageGroup:0,
       currentMessageGroupName:'',
+      selectedShortCode:'',
   };
 
   modules = {
@@ -70,9 +73,19 @@ class Generate extends React.Component {
         ['bold', 'italic', 'strike'],
         ['emoji'],
         [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
-        ['clean']
+        ['clean'],
+        ['code-block'],
         ],
-        handlers: {'emoji': function() {}}
+        handlers: {'emoji': function() {},
+            'code-block': ()=>{
+                if(this.state.columns.length) {
+                    this.setInsertShortcode();
+                    this.handleOpen();
+                } else {
+                    alert(`No Shortcodes Yet. Upload a CSV File`)
+                }
+            }
+        }
     },
     
     "emoji-shortname": {
@@ -98,8 +111,15 @@ class Generate extends React.Component {
     'header',
     'bold', 'italic', 'strike', 'blockquote','emoji',
     'list', 'bullet', 'indent',
-    'link', 'image'
+    'link', 'image','shortcode'
   ]
+
+  handleInsertShortCode=(value)=>{
+    var range = this.quillRef.getSelection();
+    let position = range ? range.index : 0;
+    this.quillRef.insertText(position,this.state.selectedShortCode);
+    this.handleClose();
+  }
 
   handleOpen=()=>{
       this.setState({open:true})
@@ -109,6 +129,9 @@ class Generate extends React.Component {
       this.setState({open:false})
   }
 
+  setInsertShortcode=()=>{
+      this.setState({dialogDisplay:'insert_shortcode'});
+  }
   componentWillMount() {
     console.log(this.props.match.params)
 
@@ -121,19 +144,37 @@ class Generate extends React.Component {
     }
   }
   
+  componentDidMount () {
+    this.attachQuillRefs()
+  }
+  
+  componentDidUpdate () {
+    this.attachQuillRefs()
+  }
+  
+  attachQuillRefs() {
+    // Ensure React-Quill reference is available:
+    if (typeof this.reactQuillRef.getEditor !== 'function') return;
+    // Skip if Quill reference is defined:
+    if (this.quillRef != null) return;
+    
+    const quillRef = this.reactQuillRef.getEditor();
+    if (quillRef != null) this.quillRef = quillRef;
+  }
+  
   handleBack=()=>{
       this.props.history.push('/home')
   }
 
   handleNextPreview=()=>{
       if(this.state.currentDefinition>0 && this.state.currentDefinition!==this.state.definitions.length+1) {
-          this.setState({currentDefinition:this.state.currentDefinition+1})
+          this.setState({currentDefinition:Number(this.state.currentDefinition)+1})
       }
   }
 
   handlePreviousPreview=()=>{
     if(this.state.currentDefinition>1 && this.state.currentDefinition!==this.state.definitions.length+1) {
-        this.setState({currentDefinition:this.state.currentDefinition-1})
+        this.setState({currentDefinition:Number(this.state.currentDefinition)-1})
     }
   }
 
@@ -369,7 +410,7 @@ class Generate extends React.Component {
                         variant="outlined"
                         value={this.state.currentTemplateGroupName}
                         fullWidth
-                        onChange={this.updateCurrentMessageGroupName}
+                        onChange={this.updateCurrentTemplateGroupName}
                     />
                 </DialogContentText>
             </DialogContent>
@@ -561,6 +602,35 @@ class Generate extends React.Component {
         this.setState({currentMessageGroup:e.target.value})
     }
 
+    handleChangeSelectedShortcode=(e)=>{
+        this.setState({selectedShortCode:e.target.value})
+    }
+    renderInsertShortcode=()=>{
+        return (<>
+        <DialogTitle id="form-dialog-title">Insert Shortcode</DialogTitle>
+        <DialogContent>
+            <DialogContentText>
+                <Select style={{width:228}}
+                input={<OutlinedInput name="age" id="outlined-age-simple" />}
+                value={this.state.selectedShortCode}
+                onChange={this.handleChangeSelectedShortcode}
+                >
+                    {this.state.columns.map((column,key)=>{
+                        return(<MenuItem value={`[${column}]`}>[{column}]</MenuItem>)
+                    })}
+                </Select>
+            </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+            <Button variant="outlined" onClick={this.handleInsertShortCode} component="span" >
+                Insert
+            </Button>
+            <Button variant="outlined" onClick={this.handleClose} component="span" >
+                Cancel
+            </Button>
+        </DialogActions>
+        </>)
+    }
     renderSaveAsTemplate=()=>{
         return (<>
         <DialogTitle id="form-dialog-title">Save Template</DialogTitle>
@@ -720,23 +790,12 @@ class Generate extends React.Component {
         <br/>
         <br/>
         <br/>
-        <Grid container spacing={3}>
+        <Grid container spacing={2}>
             <Grid item xs={2}>
                 <Card>
                     <CardContent>
                         <h1>Shortcodes</h1>
-                        
-                        <DropzoneArea 
-                            dropzoneText={`Drop CSV File here or Click to Upload`}
-                            acceptedFiles={['text/csv','application/vnd.ms-excel']}
-                            filesLimit={1}
-                            maxFileSize={2000000000}
-                            showFileNamesInPreview={true}
-                            onChange={this.onUploadCSV}
-                            onDelete={function(){return false}}
-                            showPreviewsInDropzone={false}
-                            className={`dropZone`}
-                        />
+                        <Dropzone onFilesAdded={this.onUploadCSV} />
                         {this.state.columns.length >0 && this.state.columns.map((column,index)=><p key={index}>[{column}]</p>)}
                         {this.state.columns.length === 0 && <span>No Shortcodes yet. Upload Something!</span>}                        
                     </CardContent>
@@ -762,7 +821,8 @@ class Generate extends React.Component {
                     <CardContent>
                         <h1>Editor</h1>
                         <div className="editor">
-                            <ReactQuill value={this.state.preview}
+                            <ReactQuill ref={(el) => { this.reactQuillRef = el }}
+                            value={this.state.preview}
                                 modules={this.modules}
                                 formats={this.formats}
                                         onChange={this.handleUpdateEditor} />
@@ -797,7 +857,7 @@ class Generate extends React.Component {
                     />/{this.state.definitions.length}
 
                     <Button onClick={this.handleNextPreview}><NavigateNext/></Button>
-                    <Button onClick={this.copyToClipboard}>Copy to Clipboard</Button>
+                    <Button variant="outlined" onClick={this.copyToClipboard}>Copy to Clipboard</Button>
                     <ButtonGroup size="small" aria-label="small outlined button group">
                         <Button onClick={this.setEncodingNormal}>Normal</Button>
                         <Button onClick={this.setEncodingWhatsApp}>WhatsApp</Button>
@@ -814,6 +874,8 @@ class Generate extends React.Component {
             {this.state.dialogDisplay === 'duplicate_template' && this.renderDialogTemplateSaveorUpdate()}
             {this.state.dialogDisplay === 'new_template_group' && this.renderNewTemplateGroup()}
             {this.state.dialogDisplay === 'new_message_group' && this.renderNewMessageGroup()}
+            {this.state.dialogDisplay === 'insert_shortcode' && this.renderInsertShortcode()}
+            {/* insert_shortcode */}
             {/* renderNewTemplateGroup */}
             {/* subject,value,host,update=true */}
         </Dialog>
