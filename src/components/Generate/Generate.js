@@ -522,6 +522,7 @@ class Generate extends React.Component {
             formData.append('title',this.state.messageName)
             formData.append('content',this.state.preview)
             formData.append('commitby',this.props.userData.ID)
+            formData.append('groupID',this.state.currentMessageGroup)
             const config = {
                 headers: {
                     'content-type': 'multipart/form-data'

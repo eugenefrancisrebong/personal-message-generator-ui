@@ -79,7 +79,7 @@ class Messages extends React.Component {
         const lists = this.state.messages.filter(x => {
         return x.ID !== id;
         })
-        this.setState({messages:lists})
+        this.setState({messages:lists,currentTitle:undefined,currentContent:'',currentData:[],processedData:[],currentDone:[],currentHeaders:[]})
   }
 
     handleBack=()=>{
@@ -311,7 +311,7 @@ class Messages extends React.Component {
             <Grid item xs={9}>
                 <Card>
                     <CardContent>
-                        <h1>{this.state.currentTitle}</h1>                    
+                        <h1>{this.state.currentTitle? unescape(this.state.currentTitle): "Select Messages"}</h1>                    
                         <Grid container spacing={3}>
                             <Grid item xs={10}>
                                 <div id="copyToClipboard" className={'ql-editor'} dangerouslySetInnerHTML={{__html:content}}>
