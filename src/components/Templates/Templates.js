@@ -141,7 +141,7 @@ class RootComponent extends React.Component {
             <Grid item xs={8}>
                 <Card>
                     <CardContent>
-                        <h1>{this.state.currentTemplate.Title} </h1>            
+                        <h1>{this.state.currentTemplate.Title? unescape(this.state.currentTemplate.Title):'Select a Template'} </h1>            
                         {this.state.currentTemplate.Title && <IconButton edge="end" aria-label="delete" onClick={()=>{this.editCurrentTemplate(this.state.currentTemplate.ID)}}>
                             <EditIcon />Edit
                         </IconButton>}

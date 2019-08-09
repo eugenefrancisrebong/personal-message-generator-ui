@@ -53,3 +53,7 @@ html {
 .nested {
   padding-left: 40px !important;
 }
+
+.dropZone {
+  height:250px
+}

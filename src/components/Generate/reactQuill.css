@@ -1,0 +1,4 @@
+.ql-container,.ql-editor {
+    height: auto !important;
+    min-height:200px;
+  }

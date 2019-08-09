@@ -22,10 +22,12 @@ class Users extends React.Component {
                     return(<></>)
                 }
             }},
-            { title: 'FirstName', field: 'Firstname' },
-            { title: 'LastName', field: 'Lastname' },
+            { title: 'e-mail', field: 'Email' },
+            { title: 'First Name', field: 'Firstname' },
+            { title: 'Last Name', field: 'Lastname' },
             { title: 'Designation', field: 'Designation' },
-            { title: 'PermissionLevel', field: 'PermissionLevel' }
+            { title: 'Permission Level', field: 'PermissionLevel',
+            lookup: { 0: 'Administrator', 1: 'Super Administrator' }, }
         ],
         data:[],
         updatingPassword:0,
@@ -78,7 +80,8 @@ class Users extends React.Component {
         if(this.state.password===this.state.confirmpassword && this.state.password.trim()!=="") {
             const response = await axios.post(`${process.env.REACT_APP_API_URL}users/update/password/${this.state.updatingPassword}`,{password:this.state.password,commitby:this.props.userData.ID});
             if(response.data.err) {
-                alert ('An error has occured')
+                console.log(response.data)
+                alert ('An error has occured. Try again')
             } else {
                 this.handleClose();
             }
@@ -106,8 +109,8 @@ class Users extends React.Component {
                 data={this.state.data}
                 editable={{
                     onRowAdd: async (newData) => {
-                        const {Username,Firstname,Lastname,Designation,PermissionLevel} = newData;
-                        const payload = {username:Username,password:Math.random().toString(36).substring(8),firstname:Firstname,lastname:Lastname,designation:Designation,permissionlevel:PermissionLevel,commitby:this.props.userData.ID}
+                        const {Username,Email,Firstname,Lastname,Designation,PermissionLevel} = newData;
+                        const payload = {username:Username,password:Math.random().toString(36).substring(8),email:Email,firstname:Firstname,lastname:Lastname,designation:Designation,PermissionLevel:PermissionLevel,commitby:this.props.userData.ID}
                         const response = await axios.post(`${process.env.REACT_APP_API_URL}users/register`,payload)
                         if(response.data.error) {
                             switch(response.data.err.code) {
@@ -127,8 +130,8 @@ class Users extends React.Component {
                     },
                     onRowUpdate:  async (newData,oldData) => {
                         const {ID} = oldData;
-                        const {Username,Firstname,Lastname,Designation,PermissionLevel} = newData;
-                        const payload = {username:Username,firstname:Firstname,lastname:Lastname,designation:Designation,permissionlevel:PermissionLevel,commitby:this.props.userData.id};
+                        const {Username,Email,Firstname,Lastname,Designation,PermissionLevel} = newData;
+                        const payload = {username:Username,email:Email,firstname:Firstname,lastname:Lastname,designation:Designation,PermissionLevel:PermissionLevel,commitby:this.props.userData.id};
                         const response = await axios.post(`${process.env.REACT_APP_API_URL}users/update/${ID}`,payload)
                         if(response.data.error) {
                             switch(response.data.err.code) {

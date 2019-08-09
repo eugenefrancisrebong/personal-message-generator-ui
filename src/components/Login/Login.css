@@ -14,5 +14,5 @@
 }
 
 .form-actions {
-    flex-flow: column;
+    /* flex-flow: row; */
 }
